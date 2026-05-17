@@ -20,6 +20,9 @@ class Usuario(db.Model):
     # Relación inversa para acceder a los créditos mensuales del usuario
     creditos = db.relationship('Credito', backref='usuario', lazy=True)
 
+    # NUEVO: Relación uno a uno con Administrador para el flujo de Login administrativo
+    administrador = db.relationship('Administrador', backref='usuario', uselist=False, lazy=True)
+
     # El flag dinámico en el backend que charlamos antes
     @property
     def is_abonado_actual(self):
@@ -47,3 +50,23 @@ class Credito(db.Model):
     fecha_pago = db.Column(db.DateTime, nullable=True)
     cancelaciones = db.Column(db.Integer, nullable=False, default=0)
     descuento_activo = db.Column(db.Boolean, nullable=False, default=True)
+
+
+# NUEVO: Modelo Administrador (Especialización de Usuario)
+class Administrador(db.Model):
+    __tablename__ = 'administrador'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id', onupdate='CASCADE', ondelete='RESTRICT'), nullable=False, unique=True)
+    nivel_acceso = db.Column(db.String(50), nullable=False, default='total')
+
+
+# NUEVO: Modelo Actividad con la columna precio_base requerida por la HU
+class Actividad(db.Model):
+    __tablename__ = 'actividad'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    nombre = db.Column(db.String(100), nullable=False, unique=True) # unique=True para cumplir la Regla de Negocio 1
+    descripcion = db.Column(db.Text, nullable=True)
+    precio_base = db.Column(db.Numeric(10, 2), nullable=False, default=0.00)
+    activa = db.Column(db.Boolean, nullable=False, default=True)
