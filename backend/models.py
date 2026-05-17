@@ -70,3 +70,36 @@ class Actividad(db.Model):
     descripcion = db.Column(db.Text, nullable=True)
     precio_base = db.Column(db.Numeric(10, 2), nullable=False, default=0.00)
     activa = db.Column(db.Boolean, nullable=False, default=True)
+
+class Turno(db.Model):
+    __tablename__ = 'turno'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    actividad_id = db.Column(db.Integer, db.ForeignKey('actividad.id', onupdate='CASCADE', ondelete='RESTRICT'), nullable=False)
+    fecha = db.Column(db.Date, nullable=False)
+    horario_inicio = db.Column(db.Time, nullable=False)
+    horario_fin = db.Column(db.Time, nullable=False) 
+    activo = db.Column(db.Boolean, default=True, nullable=False)
+    cupo_maximo = db.Column(db.Integer, nullable=False) 
+    cupo_disponible = db.Column(db.Integer, nullable=False)
+
+    # Relación inversa con las reservas
+    reservas = db.relationship('Reserva', backref='turno', lazy=True)
+
+
+class Reserva(db.Model):
+    __tablename__ = 'reserva'
+
+    id = db.Column(db.Integer, primary_key=True)
+    turno_id = db.Column(db.Integer, db.ForeignKey('turno.id'), nullable=False)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    #fecha_reserva = db.Column(db.DateTime, default=db.func.current_timestamp(), nullable=False)
+    
+    # ENUM estricto de tu SQL
+    estado = db.Column(db.Enum('confirmada', 'cancelada_usuario', 'cancelada_centro', 'pendiente_pago', 'asistio', 'ausente'), default='pendiente_pago', nullable=False)
+    metodo_pago = db.Column(db.Enum('mercado_pago', 'efectivo', 'membresia'), nullable=False)
+    
+    # Columnas de montos reales
+    monto_total = db.Column(db.Numeric(10, 2), nullable=False)
+    monto_pagado = db.Column(db.Numeric(10, 2), default=0.00, nullable=False)
+    #resultado_pago = db.Column(db.String(100))
