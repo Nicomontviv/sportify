@@ -1,0 +1,45 @@
+====================================================================
+📁 ESTRUCTURA DEL PROYECTO (Generada con find)
+Fecha: do., 17 de may. de 2026 11:46:52
+====================================================================
+.
+./backend
+./backend/app.py
+./backend/models.py
+./backend/requirements.txt
+./backend/routes
+./backend/routes/actividades.py
+./backend/routes/auth.py
+./backend/seeds.py
+./database
+./database/sportify.sql
+./docs
+./estructura_proyecto.txt
+./frontend
+./frontend/eslint.config.js
+./frontend/index.html
+./frontend/package.json
+./frontend/package-lock.json
+./frontend/postcss.config.js
+./frontend/public
+./frontend/public/favicon.svg
+./frontend/public/icons.svg
+./frontend/README.md
+./frontend/src
+./frontend/src/App.css
+./frontend/src/App.jsx
+./frontend/src/assets
+./frontend/src/assets/hero.png
+./frontend/src/assets/react.svg
+./frontend/src/assets/vite.svg
+./frontend/src/index.css
+./frontend/src/main.jsx
+./frontend/src/pages
+./frontend/src/pages/AdminActividades.jsx
+./frontend/src/pages/Login.jsx
+./frontend/tailwind.config.js
+./frontend/vite.config.js
+./guia rapida git.txt
+./README.md
+./ver_proyecto.sh
+====================================================================

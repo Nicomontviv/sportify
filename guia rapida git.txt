@@ -1,0 +1,29 @@
+git checkout development  //Cambiar a development
+git pull origin development //Traer últimos cambios del remoto
+git checkout -b feature //crear nueva rama
+//agrego actulizacion
+git add . 
+git commit -m "Agrego boton"
+git push -u origin feature
+
+
+//CUANDO TERMINAMOS DE AGREGAR FEATURE
+
+git checkout development
+git pull origin development
+git checkout feature
+
+git merge development  //DESDE LA RAMA FEATURE
+//resolver posibles conflictos
+git add .
+git commit
+git push
+
+MERGE FINAL
+
+git checkout development
+git merge feature
+git push origin development
+
+
+

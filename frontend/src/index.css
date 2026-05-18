@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  color: #212121; /* Gris Oscuro Texto [cite: 333] */
+  background-color: #FFFFFF; /* Blanco Puro Fondo  */
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  background-color: #FFFFFF; /* Fondo general  */
+  color: #212121; /* Texto [cite: 333] */
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
