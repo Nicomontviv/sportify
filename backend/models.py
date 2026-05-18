@@ -71,34 +71,56 @@ class Actividad(db.Model):
     precio_base = db.Column(db.Numeric(10, 2), nullable=False, default=0.00)
     activa = db.Column(db.Boolean, nullable=False, default=True)
 
+
+# MODIFICADO: Turno ahora es la PLANTILLA recurrente (sin fecha).
+# Define que "todos los <dia_semana> de <horario_inicio> a <horario_fin>
+# hay <actividad> con cupo máximo X". Las instancias concretas con fecha
+# viven en la tabla Clase.
 class Turno(db.Model):
     __tablename__ = 'turno'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     actividad_id = db.Column(db.Integer, db.ForeignKey('actividad.id', onupdate='CASCADE', ondelete='RESTRICT'), nullable=False)
-    fecha = db.Column(db.Date, nullable=False)
+    dia_semana = db.Column(db.Enum('lunes','martes','miercoles','jueves','viernes'), nullable=False)
     horario_inicio = db.Column(db.Time, nullable=False)
-    horario_fin = db.Column(db.Time, nullable=False) 
+    horario_fin = db.Column(db.Time, nullable=False)
+    cupo_maximo = db.Column(db.SmallInteger, nullable=False)
     activo = db.Column(db.Boolean, default=True, nullable=False)
-    cupo_maximo = db.Column(db.Integer, nullable=False) 
-    cupo_disponible = db.Column(db.Integer, nullable=False)
 
-    # Relación inversa con las reservas
-    reservas = db.relationship('Reserva', backref='turno', lazy=True)
+    # Relación inversa con las clases generadas a partir de este turno
+    clases = db.relationship('Clase', backref='turno', lazy=True)
 
 
+# NUEVO: Clase = instancia concreta de un turno con fecha puntual.
+# Es a lo que reservan los usuarios. Hereda actividad, día, horario y
+# cupo máximo desde Turno; solo guarda lo propio de la fecha.
+class Clase(db.Model):
+    __tablename__ = 'clase'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    turno_id = db.Column(db.Integer, db.ForeignKey('turno.id', onupdate='CASCADE', ondelete='RESTRICT'), nullable=False)
+    fecha = db.Column(db.Date, nullable=False)
+    cupo_disponible = db.Column(db.SmallInteger, nullable=False)
+    activo = db.Column(db.Boolean, default=True, nullable=False)
+
+    # Relación inversa con las reservas de esta clase puntual
+    reservas = db.relationship('Reserva', backref='clase', lazy=True)
+
+
+# MODIFICADO: Reserva ahora apunta a Clase (instancia con fecha),
+# no a Turno (plantilla).
 class Reserva(db.Model):
     __tablename__ = 'reserva'
 
     id = db.Column(db.Integer, primary_key=True)
-    turno_id = db.Column(db.Integer, db.ForeignKey('turno.id'), nullable=False)
+    clase_id = db.Column(db.Integer, db.ForeignKey('clase.id'), nullable=False)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
     #fecha_reserva = db.Column(db.DateTime, default=db.func.current_timestamp(), nullable=False)
-    
+
     # ENUM estricto de tu SQL
     estado = db.Column(db.Enum('confirmada', 'cancelada_usuario', 'cancelada_centro', 'pendiente_pago', 'asistio', 'ausente'), default='pendiente_pago', nullable=False)
     metodo_pago = db.Column(db.Enum('mercado_pago', 'efectivo', 'membresia'), nullable=False)
-    
+
     # Columnas de montos reales
     monto_total = db.Column(db.Numeric(10, 2), nullable=False)
     monto_pagado = db.Column(db.Numeric(10, 2), default=0.00, nullable=False)
