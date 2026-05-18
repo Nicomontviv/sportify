@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import db, Actividad, Turno, Reserva, Usuario
+from models import db, Actividad, Turno, Reserva, Usuario,Administrador
  
 # Creamos el Blueprint para Actividades
 actividades_bp = Blueprint('actividades', __name__)
@@ -24,9 +24,19 @@ def obtener_actividades():
  
 @actividades_bp.route('', methods=['POST'])
 def crear_actividad():
-    user_role = request.headers.get('X-User-Role')
-    if user_role != 'admin':
-        return jsonify({"status": "error", "message": "No autorizado"}), 403
+    # Le pedimos al frontend el ID del usuario que intenta crear la actividad
+    user_id = request.headers.get('X-User-Id')
+    if user_id:
+        user_id = int(user_id)
+    print("====================================")
+    print(f"VALOR RECIBIDO DESDE REACT: {user_id}")
+    print(f"TIPO DE DATO: {type(user_id)}")
+    print("====================================")
+    # Verificamos en la base de datos si ese ID de usuario es administrador
+    es_admin = Administrador.query.filter_by(usuario_id=user_id).first()
+    
+    if not es_admin:
+        return jsonify({"status": "error", "message": "No autorizado. No sos administrador."}), 403
  
     data = request.get_json()
     nombre_ingresado = data.get('nombre')

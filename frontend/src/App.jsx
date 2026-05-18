@@ -1,11 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Login from './pages/Login';
+import Registro from './pages/Registro';
 import AdminActividades from './pages/AdminActividades';
-
+import InicioCliente from './pages/InicioCliente'; 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userSession, setUserSession] = useState(null);
+  
+  // NUEVO ESTADO: Controla si el usuario ve el login o el registro antes de loguearse
+  const [vista, setVista] = useState('login'); 
+
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -70,8 +75,11 @@ function App() {
     setMensajeErrorActividad('');
 
     const payload = { nombre: nombreActividad, precio_base: precioActividad, descripcion: descripcionActividad };
-    const config = { headers: { 'X-User-Role': userSession?.role } };
-
+    const config = {
+  headers: {
+    'X-User-Id': userSession?.id // <-- Cambiamos esto para pasar el ID real
+  }
+};
     try {
       if (modoFormulario === 'crear') {
         const response = await axios.post('http://127.0.0.1:5000/api/actividades', payload, config);
@@ -92,26 +100,41 @@ function App() {
       setMensajeErrorActividad(error.response?.data?.message || 'Error en la operación');
     }
   };
-
-  return (
+return (
     <>
-      {!isLoggedIn ? (
-        <Login 
-          loginEmail={loginEmail} setLoginEmail={setLoginEmail}
-          loginPassword={loginPassword} setLoginPassword={setLoginPassword}
-          loginError={loginError} handleLogin={handleLogin}
-        />
-      ) : (
-        <AdminActividades 
-          userSession={userSession} setIsLoggedIn={setIsLoggedIn} actividades={actividades}
-          mensajeExito={mensajeExito} mensajeErrorActividad={mensajeErrorActividad}
-          modoFormulario={modoFormulario} nombreActividad={nombreActividad} setNombreActividad={setNombreActividad}
-          precioActividad={precioActividad} setPrecioActividad={setPrecioActividad}
-          descripcionActividad={descripcionActividad} setDescripcionActividad={setDescripcionActividad}
-          seleccionarParaModificar={seleccionarParaModificar} cancelarEdicion={cancelarEdicion}
-          handleFormularioActividad={handleFormularioActividad}
-          cargarActividades={cargarActividades}
-        />
+     {!isLoggedIn ? (
+  vista === 'login' ? (
+    <Login 
+      loginEmail={loginEmail} setLoginEmail={setLoginEmail}
+      loginPassword={loginPassword} setLoginPassword={setLoginPassword}
+      loginError={loginError} handleLogin={handleLogin}
+      alCambiarVista={() => setVista('registro')} // <-- Agregamos esto
+    />
+  ) : (
+    <Registro 
+      alCambiarVista={() => setVista('login')} // <-- Agregamos esto
+    />
+  )
+) : (
+        // SI ESTÁ LOGUEADO: Si el objeto administrador existe, es Admin. Si es null/undefined, es Cliente.
+        userSession?.administrador ? (
+          <AdminActividades 
+            userSession={userSession} setIsLoggedIn={setIsLoggedIn} actividades={actividades}
+            mensajeExito={mensajeExito} mensajeErrorActividad={mensajeErrorActividad}
+            modoFormulario={modoFormulario} nombreActividad={nombreActividad} setNombreActividad={setNombreActividad}
+            precioActividad={precioActividad} setPrecioActividad={setPrecioActividad}
+            descripcionActividad={descripcionActividad} setDescripcionActividad={setDescripcionActividad}
+            seleccionarParaModificar={seleccionarParaModificar} cancelarEdicion={cancelarEdicion}
+            handleFormularioActividad={handleFormularioActividad}
+            cargarActividades={cargarActividades}
+          />
+        ) : (
+          // Si no es admin, va directo a tu pantalla de cliente común
+          <InicioCliente 
+            userSession={userSession} 
+            setIsLoggedIn={setIsLoggedIn} 
+          />
+        )
       )}
     </>
   );
