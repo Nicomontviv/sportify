@@ -87,43 +87,57 @@ def cargar_datos_base():
             padel_act  = Actividad.query.filter_by(nombre="Pádel").first()
             admin_user = Usuario.query.filter_by(email="admin@sportify.com").first()
 
-            # Escenario 1: Vóley libre (12 cupos disponibles)
+            # Escenario 1: Turno (plantilla) de Vóley los lunes 18-19hs, cupo 12.
             turno_voley = Turno(
                 actividad_id=voley_act.id,
-                fecha=date(2026, 6, 1),
+                dia_semana='lunes',
                 horario_inicio=time(18, 0),
                 horario_fin=time(19, 0),
-                activo=True,
                 cupo_maximo=12,
-                cupo_disponible=12
+                activo=True
             )
             db.session.add(turno_voley)
 
-            # Escenario 2: Pádel con 1 lugar ya ocupado (4 max, 3 disponibles)
+            # Escenario 2: Turno (plantilla) de Pádel los martes 19-20hs, cupo 4.
             turno_padel = Turno(
                 actividad_id=padel_act.id,
-                fecha=date(2026, 6, 2),
+                dia_semana='martes',
                 horario_inicio=time(19, 0),
                 horario_fin=time(20, 0),
-                activo=True,
                 cupo_maximo=4,
-                cupo_disponible=3
+                activo=True
             )
             db.session.add(turno_padel)
+            db.session.flush()  # necesitamos los IDs para generar clases
+
+            # Generamos las clases (instancias con fecha) para junio 2026 a partir
+            # de cada turno. El helper crea una Clase por cada fecha del mes que
+            # coincida con el dia_semana del turno.
+            clases_voley = generar_clases_para_mes(turno_voley, 2026, 6)
+            clases_padel = generar_clases_para_mes(turno_padel, 2026, 6)
+
+            for c in clases_voley + clases_padel:
+                db.session.add(c)
             db.session.flush()
 
-            # Reserva del admin para el turno de Pádel
-            reserva_padel = Reserva(
-                turno_id=turno_padel.id,
-                usuario_id=admin_user.id,
-                estado='confirmada',
-                metodo_pago='mercado_pago',
-                monto_total=16000.00,
-                monto_pagado=5000.00
-            )
-            db.session.add(reserva_padel)
+            # Simulamos que el admin ya reservó la primera clase de Pádel del mes,
+            # así dejamos un escenario con una reserva concreta para la demo.
+            primera_clase_padel = clases_padel[0] if clases_padel else None
+            if primera_clase_padel:
+                primera_clase_padel.cupo_disponible -= 1  # consumimos un lugar
+                reserva_padel = Reserva(
+                    clase_id=primera_clase_padel.id,
+                    usuario_id=admin_user.id,
+                    estado='confirmada',
+                    metodo_pago='mercado_pago',
+                    monto_total=16000.00,
+                    monto_pagado=5000.00
+                )
+                db.session.add(reserva_padel)
+
             db.session.commit()
-            print("✔️ Escenarios de turnos acoplados sin errores.")
+            print(f"✔️ Escenarios montados: 2 turnos (plantillas), "
+                  f"{len(clases_voley) + len(clases_padel)} clases generadas para junio.")
         except Exception as e:
             db.session.rollback()
             print(f"⚠️ Nota: No se pudieron montar los turnos de prueba: {str(e)}")

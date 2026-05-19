@@ -24,6 +24,7 @@ CREATE TABLE actividad (
   id          INT            NOT NULL AUTO_INCREMENT,
   nombre      VARCHAR(100)   NOT NULL,
   descripcion TEXT,
+  precio_base DECIMAL(10,2)  NOT NULL DEFAULT 0.00,
   activa      TINYINT(1)     NOT NULL DEFAULT 1,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB;
