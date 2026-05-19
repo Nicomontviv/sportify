@@ -2,6 +2,7 @@ import os
 from datetime import date, datetime, time
 from app import app, db
 from models import Usuario, Administrador, Actividad, Turno, Reserva
+from werkzeug.security import generate_password_hash
 
 def cargar_datos_base():
     print("🧼 [1/4] Limpiando residuos de turnos anteriores...")
@@ -15,28 +16,39 @@ def cargar_datos_base():
             db.session.rollback()
             print(f"⚠️ Alerta al limpiar (puede no haber datos todavía): {str(e)}")
 
-    print("👤 [2/4] Verificando usuario Administrador...")
+    print("👤 [2/4] Forzando recreación limpia del Administrador...")
     with app.app_context():
         admin_email = "admin@sportify.com"
-        admin = Usuario.query.filter_by(email=admin_email).first()
-
-        if not admin:
-            admin = Usuario(
-                nombre="Nicolás",
-                apellido="Montanari",
-                dni="12345678",
-                email=admin_email,
-                password_hash="admin123",
-                fecha_nacimiento=date(1995, 10, 10)
-            )
-            db.session.add(admin)
-            db.session.flush()
-            perfil_admin = Administrador(usuario_id=admin.id, nivel_acceso="total")
-            db.session.add(perfil_admin)
+        
+        # 1. Buscamos si ya existe el admin viejo con la contraseña rota
+        admin_viejo = Usuario.query.filter_by(email=admin_email).first()
+        if admin_viejo:
+            # Borramos primero su rol por la restricción de clave foránea
+            Administrador.query.filter_by(usuario_id=admin_viejo.id).delete()
+            # Borramos el usuario
+            db.session.delete(admin_viejo)
             db.session.commit()
-            print("✔️ Usuario Administrador creado.")
-        else:
-            print("info: El administrador ya existía.")
+            print("🧹 Viejo administrador eliminado para limpiar el texto plano.")
+
+        # 2. Creamos el administrador de cero con hash real garantizado
+        from werkzeug.security import generate_password_hash
+        
+        admin = Usuario(
+            nombre="Nicolás",
+            apellido="Montanari",
+            dni="12345678",
+            email=admin_email,
+            password_hash=generate_password_hash("admin123"),
+            fecha_nacimiento=date(1995, 10, 10)
+        )
+        db.session.add(admin)
+        db.session.flush() # Obtenemos el ID dinámico antes del commit
+        
+        # 3. Le asignamos el perfil de Administrador (esto activa tu vista en React)
+        perfil_admin = Administrador(usuario_id=admin.id, nivel_acceso="total")
+        db.session.add(perfil_admin)
+        db.session.commit()
+        print("✔️ ¡Usuario Administrador creado de cero con contraseña encriptada!")
 
     print("🏋️ [3/4] Forzando activación de disciplinas base...")
     with app.app_context():
