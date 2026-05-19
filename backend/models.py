@@ -1,5 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Instanciamos db para poder usarlo en este archivo
 db = SQLAlchemy()
@@ -15,7 +15,7 @@ class Usuario(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     fecha_nacimiento = db.Column(db.Date, nullable=False)
     activo = db.Column(db.Boolean, nullable=False, default=True)
-    fecha_alta = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    fecha_alta = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     # Relación inversa para acceder a los créditos mensuales del usuario
     creditos = db.relationship('Credito', backref='usuario', lazy=True)
