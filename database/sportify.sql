@@ -2,7 +2,13 @@
 --  Sportify — Modelo Físico de Base de Datos 
 --  Motor: MySQL 8.x
 --  Proyecto: La Plata Tech — Grupo 59
---  Fecha: 2026-05-16
+--  Fecha: 2026-05-18
+--
+--  CAMBIO en esta versión:
+--    TURNO pasa a ser plantilla recurrente (día de la semana,
+--    horario, cupo). Se agrega CLASE como instancia con fecha
+--    concreta y cupo disponible propio. RESERVA, LISTA_ESPERA
+--    y LISTA_ACTIVIDAD_PROFESOR pasan a referenciar CLASE.
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS sportify
@@ -98,28 +104,48 @@ CREATE TABLE administrador (
 ) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------
--- 7. TURNO
+-- 7. TURNO  (plantilla recurrente — sin fecha)
+--    Define que "todos los <dia_semana> de <hora_inicio> a <hora_fin>
+--    hay <actividad> con cupo máximo X". A partir de cada turno
+--    se generan las instancias concretas en la tabla CLASE.
 -- ------------------------------------------------------------
 CREATE TABLE turno (
-  id               INT        NOT NULL AUTO_INCREMENT,
-  actividad_id     INT        NOT NULL,
-  fecha            DATE       NOT NULL,
-  horario_inicio   TIME       NOT NULL,
-  horario_fin      TIME       NOT NULL,
-  cupo_maximo      TINYINT    NOT NULL,
-  cupo_disponible  TINYINT    NOT NULL,
-  activo           TINYINT(1) NOT NULL DEFAULT 1,
+  id              INT        NOT NULL AUTO_INCREMENT,
+  actividad_id    INT        NOT NULL,
+  dia_semana      ENUM('lunes','martes','miercoles','jueves','viernes') NOT NULL,
+  horario_inicio  TIME       NOT NULL,
+  horario_fin     TIME       NOT NULL,
+  cupo_maximo     TINYINT    NOT NULL,
+  activo          TINYINT(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (id),
+  UNIQUE KEY uq_turno_franja (actividad_id, dia_semana, horario_inicio),
   CONSTRAINT fk_turno_actividad FOREIGN KEY (actividad_id)
     REFERENCES actividad (id) ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------
--- 8. RESERVA
+-- 8. CLASE  (instancia concreta con fecha — a esto se reserva)
+--    Hereda actividad, día, horario y cupo máximo del turno.
+--    Solo guarda lo propio de la fecha: fecha exacta y cupo disponible.
+-- ------------------------------------------------------------
+CREATE TABLE clase (
+  id               INT        NOT NULL AUTO_INCREMENT,
+  turno_id         INT        NOT NULL,
+  fecha            DATE       NOT NULL,
+  cupo_disponible  TINYINT    NOT NULL,
+  activo           TINYINT(1) NOT NULL DEFAULT 1,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_clase_turno_fecha (turno_id, fecha),
+  CONSTRAINT fk_clase_turno FOREIGN KEY (turno_id)
+    REFERENCES turno (id) ON UPDATE CASCADE ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+-- ------------------------------------------------------------
+-- 9. RESERVA  (apunta a CLASE)
 -- ------------------------------------------------------------
 CREATE TABLE reserva (
   id             INT            NOT NULL AUTO_INCREMENT,
-  turno_id       INT            NOT NULL,
+  clase_id       INT            NOT NULL,
   usuario_id     INT            NOT NULL,
   fecha_reserva  DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   estado         ENUM('confirmada','cancelada_usuario','cancelada_centro','pendiente_pago','asistio','ausente')
@@ -129,12 +155,12 @@ CREATE TABLE reserva (
   monto_pagado   DECIMAL(10,2)  NOT NULL DEFAULT 0.00,
   resultado_pago VARCHAR(100),                               -- respuesta de MP
   PRIMARY KEY (id),
-  CONSTRAINT fk_reserva_turno   FOREIGN KEY (turno_id)   REFERENCES turno   (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+  CONSTRAINT fk_reserva_clase   FOREIGN KEY (clase_id)   REFERENCES clase   (id) ON UPDATE CASCADE ON DELETE RESTRICT,
   CONSTRAINT fk_reserva_usuario FOREIGN KEY (usuario_id) REFERENCES usuario (id) ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------
--- 9. DEPOSITO  (seña / pago en efectivo registrado por empleado)
+-- 10. DEPOSITO  (seña / pago en efectivo registrado por empleado)
 -- ------------------------------------------------------------
 CREATE TABLE deposito (
   id           INT            NOT NULL AUTO_INCREMENT,
@@ -150,11 +176,11 @@ CREATE TABLE deposito (
 ) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------
--- 10. LISTA_ESPERA
+-- 11. LISTA_ESPERA  (apunta a CLASE)
 -- ------------------------------------------------------------
 CREATE TABLE lista_espera (
   id                  INT        NOT NULL AUTO_INCREMENT,
-  turno_id            INT        NOT NULL,
+  clase_id            INT        NOT NULL,
   usuario_id          INT        NOT NULL,
   fecha_inscripcion   DATETIME   NOT NULL DEFAULT CURRENT_TIMESTAMP,
   posicion            SMALLINT   NOT NULL,
@@ -162,13 +188,13 @@ CREATE TABLE lista_espera (
                                  NOT NULL DEFAULT 'en_espera',
   fecha_notificacion  DATETIME,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_lista_espera_turno_usuario (turno_id, usuario_id),
-  CONSTRAINT fk_le_turno   FOREIGN KEY (turno_id)   REFERENCES turno   (id) ON UPDATE CASCADE ON DELETE CASCADE,
+  UNIQUE KEY uq_lista_espera_clase_usuario (clase_id, usuario_id),
+  CONSTRAINT fk_le_clase   FOREIGN KEY (clase_id)   REFERENCES clase   (id) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT fk_le_usuario FOREIGN KEY (usuario_id) REFERENCES usuario (id) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------
--- 11. LISTA_EJERCER  (empleado/profesor que dicta una actividad)
+-- 12. LISTA_EJERCER  (empleado/profesor que dicta una actividad)
 -- ------------------------------------------------------------
 CREATE TABLE lista_ejercer (
   id            INT NOT NULL AUTO_INCREMENT,
@@ -181,15 +207,15 @@ CREATE TABLE lista_ejercer (
 ) ENGINE=InnoDB;
 
 -- ------------------------------------------------------------
--- 12. LISTA_ACTIVIDAD_PROFESOR  (empleado asignado a un turno puntual)
+-- 13. LISTA_ACTIVIDAD_PROFESOR  (empleado asignado a una CLASE puntual)
 -- ------------------------------------------------------------
 CREATE TABLE lista_actividad_profesor (
   id           INT NOT NULL AUTO_INCREMENT,
-  turno_id     INT NOT NULL,
+  clase_id     INT NOT NULL,
   empleado_id  INT NOT NULL,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_actividad_profesor (turno_id, empleado_id),
-  CONSTRAINT fk_lap_turno    FOREIGN KEY (turno_id)    REFERENCES turno    (id) ON UPDATE CASCADE ON DELETE CASCADE,
+  UNIQUE KEY uq_actividad_profesor (clase_id, empleado_id),
+  CONSTRAINT fk_lap_clase    FOREIGN KEY (clase_id)    REFERENCES clase    (id) ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT fk_lap_empleado FOREIGN KEY (empleado_id) REFERENCES empleado (id) ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB;
 

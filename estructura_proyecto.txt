@@ -1,10 +1,13 @@
 ====================================================================
 📁 ESTRUCTURA DEL PROYECTO (Generada con find)
-Fecha: do., 17 de may. de 2026 11:46:52
+Fecha: Mon May 18 20:14:48     2026
 ====================================================================
 .
+./README.md
 ./backend
 ./backend/app.py
+./backend/helpers
+./backend/helpers/turnos_helper.py
 ./backend/models.py
 ./backend/requirements.txt
 ./backend/routes
@@ -13,18 +16,17 @@ Fecha: do., 17 de may. de 2026 11:46:52
 ./backend/seeds.py
 ./database
 ./database/sportify.sql
-./docs
 ./estructura_proyecto.txt
 ./frontend
+./frontend/README.md
 ./frontend/eslint.config.js
 ./frontend/index.html
-./frontend/package.json
 ./frontend/package-lock.json
+./frontend/package.json
 ./frontend/postcss.config.js
 ./frontend/public
 ./frontend/public/favicon.svg
 ./frontend/public/icons.svg
-./frontend/README.md
 ./frontend/src
 ./frontend/src/App.css
 ./frontend/src/App.jsx
@@ -36,10 +38,11 @@ Fecha: do., 17 de may. de 2026 11:46:52
 ./frontend/src/main.jsx
 ./frontend/src/pages
 ./frontend/src/pages/AdminActividades.jsx
+./frontend/src/pages/InicioCliente.jsx
 ./frontend/src/pages/Login.jsx
+./frontend/src/pages/Registro.jsx
 ./frontend/tailwind.config.js
 ./frontend/vite.config.js
 ./guia rapida git.txt
-./README.md
 ./ver_proyecto.sh
 ====================================================================
