@@ -76,10 +76,11 @@ function App() {
 
     const payload = { nombre: nombreActividad, precio_base: precioActividad, descripcion: descripcionActividad };
     const config = {
-  headers: {
-    'X-User-Id': userSession?.id // <-- Cambiamos esto para pasar el ID real
-  }
-};
+      headers: {
+        // Validamos dinámicamente: si el usuario tiene el perfil administrador, manda 'admin'
+        'X-User-Role': userSession?.administrador ? 'admin' : 'cliente'
+      }
+    };
     try {
       if (modoFormulario === 'crear') {
         const response = await axios.post('http://127.0.0.1:5000/api/actividades', payload, config);

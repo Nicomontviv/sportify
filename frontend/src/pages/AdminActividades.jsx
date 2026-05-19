@@ -34,7 +34,8 @@ const AdminActividades = ({
 
     try {
       const response = await axios.delete(`http://127.0.0.1:5000/api/actividades/${id}`, {
-        headers: { 'X-User-Role': userSession?.role }
+        // 👇 ACÁ APLICAMOS LA MISMA LÓGICA 👇
+        headers: { 'X-User-Role': userSession?.administrador ? 'admin' : 'cliente' }
       });
 
       if (response.data.status === 'success') {
