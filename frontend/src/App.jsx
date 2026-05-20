@@ -3,13 +3,20 @@ import axios from 'axios';
 import Login from './pages/Login';
 import Registro from './pages/Registro';
 import AdminActividades from './pages/AdminActividades';
+import AdminTurnos from './pages/AdminTurnos';
 import InicioCliente from './pages/InicioCliente'; 
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userSession, setUserSession] = useState(null);
   
-  // NUEVO ESTADO: Controla si el usuario ve el login o el registro antes de loguearse
+  // Controla si el usuario ve el login o el registro antes de loguearse
   const [vista, setVista] = useState('login'); 
+
+  // Controla qué pantalla ve el admin después del login
+  // Valores posibles: 'actividades' | 'turnos'
+  // En el futuro se pueden agregar más: 'informes', 'empleados', etc.
+  const [vistaAdmin, setVistaAdmin] = useState('actividades');
 
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
@@ -77,8 +84,8 @@ function App() {
     const payload = { nombre: nombreActividad, precio_base: precioActividad, descripcion: descripcionActividad };
     const config = {
       headers: {
-        // Validamos dinámicamente: si el usuario tiene el perfil administrador, manda 'admin'
-        'X-User-Role': userSession?.administrador ? 'admin' : 'cliente'
+        'X-User-Role': userSession?.administrador ? 'admin' : 'cliente',
+        'X-User-Id': userSession?.id
       }
     };
     try {
@@ -101,36 +108,45 @@ function App() {
       setMensajeErrorActividad(error.response?.data?.message || 'Error en la operación');
     }
   };
-return (
+
+  return (
     <>
-     {!isLoggedIn ? (
-  vista === 'login' ? (
-    <Login 
-      loginEmail={loginEmail} setLoginEmail={setLoginEmail}
-      loginPassword={loginPassword} setLoginPassword={setLoginPassword}
-      loginError={loginError} handleLogin={handleLogin}
-      alCambiarVista={() => setVista('registro')} // <-- Agregamos esto
-    />
-  ) : (
-    <Registro 
-      alCambiarVista={() => setVista('login')} // <-- Agregamos esto
-    />
-  )
-) : (
-        // SI ESTÁ LOGUEADO: Si el objeto administrador existe, es Admin. Si es null/undefined, es Cliente.
-        userSession?.administrador ? (
-          <AdminActividades 
-            userSession={userSession} setIsLoggedIn={setIsLoggedIn} actividades={actividades}
-            mensajeExito={mensajeExito} mensajeErrorActividad={mensajeErrorActividad}
-            modoFormulario={modoFormulario} nombreActividad={nombreActividad} setNombreActividad={setNombreActividad}
-            precioActividad={precioActividad} setPrecioActividad={setPrecioActividad}
-            descripcionActividad={descripcionActividad} setDescripcionActividad={setDescripcionActividad}
-            seleccionarParaModificar={seleccionarParaModificar} cancelarEdicion={cancelarEdicion}
-            handleFormularioActividad={handleFormularioActividad}
-            cargarActividades={cargarActividades}
+      {!isLoggedIn ? (
+        vista === 'login' ? (
+          <Login 
+            loginEmail={loginEmail} setLoginEmail={setLoginEmail}
+            loginPassword={loginPassword} setLoginPassword={setLoginPassword}
+            loginError={loginError} handleLogin={handleLogin}
+            alCambiarVista={() => setVista('registro')}
           />
         ) : (
-          // Si no es admin, va directo a tu pantalla de cliente común
+          <Registro 
+            alCambiarVista={() => setVista('login')}
+          />
+        )
+      ) : (
+        // SI ESTÁ LOGUEADO: si es admin, mostramos una de las pantallas según vistaAdmin
+        userSession?.administrador ? (
+          vistaAdmin === 'actividades' ? (
+            <AdminActividades 
+              userSession={userSession} setIsLoggedIn={setIsLoggedIn} actividades={actividades}
+              mensajeExito={mensajeExito} mensajeErrorActividad={mensajeErrorActividad}
+              modoFormulario={modoFormulario} nombreActividad={nombreActividad} setNombreActividad={setNombreActividad}
+              precioActividad={precioActividad} setPrecioActividad={setPrecioActividad}
+              descripcionActividad={descripcionActividad} setDescripcionActividad={setDescripcionActividad}
+              seleccionarParaModificar={seleccionarParaModificar} cancelarEdicion={cancelarEdicion}
+              handleFormularioActividad={handleFormularioActividad}
+              cargarActividades={cargarActividades}
+              irAGestionTurnos={() => setVistaAdmin('turnos')}
+            />
+          ) : (
+            <AdminTurnos
+              userSession={userSession}
+              setIsLoggedIn={setIsLoggedIn}
+              volverAActividades={() => setVistaAdmin('actividades')}
+            />
+          )
+        ) : (
           <InicioCliente 
             userSession={userSession} 
             setIsLoggedIn={setIsLoggedIn} 

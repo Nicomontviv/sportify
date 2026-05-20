@@ -102,7 +102,7 @@ class Clase(db.Model):
     fecha = db.Column(db.Date, nullable=False)
     cupo_disponible = db.Column(db.SmallInteger, nullable=False)
     activo = db.Column(db.Boolean, default=True, nullable=False)
-
+    
     # Relación inversa con las reservas de esta clase puntual
     reservas = db.relationship('Reserva', backref='clase', lazy=True)
 

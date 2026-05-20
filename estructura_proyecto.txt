@@ -1,8 +1,9 @@
 ====================================================================
 📁 ESTRUCTURA DEL PROYECTO (Generada con find)
-Fecha: lu., 18 de may. de 2026 22:31:24
+Fecha: Tue May 19 18:13:19     2026
 ====================================================================
 .
+./README.md
 ./backend
 ./backend/app.py
 ./backend/helpers
@@ -15,18 +16,17 @@ Fecha: lu., 18 de may. de 2026 22:31:24
 ./backend/seeds.py
 ./database
 ./database/sportify.sql
-./docs
 ./estructura_proyecto.txt
 ./frontend
+./frontend/README.md
 ./frontend/eslint.config.js
 ./frontend/index.html
-./frontend/package.json
 ./frontend/package-lock.json
+./frontend/package.json
 ./frontend/postcss.config.js
 ./frontend/public
 ./frontend/public/favicon.svg
 ./frontend/public/icons.svg
-./frontend/README.md
 ./frontend/src
 ./frontend/src/App.css
 ./frontend/src/App.jsx
@@ -44,6 +44,5 @@ Fecha: lu., 18 de may. de 2026 22:31:24
 ./frontend/tailwind.config.js
 ./frontend/vite.config.js
 ./guia rapida git.txt
-./README.md
 ./ver_proyecto.sh
 ====================================================================

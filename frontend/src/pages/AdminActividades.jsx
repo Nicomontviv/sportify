@@ -17,7 +17,8 @@ const AdminActividades = ({
   seleccionarParaModificar, 
   cancelarEdicion, 
   handleFormularioActividad,
-  cargarActividades 
+  cargarActividades,
+  irAGestionTurnos 
 }) => {
 
   // Estados locales para la simulación del impacto de la baja (Escenario 2)
@@ -72,6 +73,12 @@ const AdminActividades = ({
         <nav className="space-y-2">
           <button className="w-full text-left rounded-xl bg-sportify-blue p-3 text-sm font-bold shadow-sm transition-transform hover:scale-[1.02]">
             🏋️ Gestión de Actividades
+          </button>
+          <button 
+            onClick={irAGestionTurnos}
+            className="w-full text-left rounded-xl p-3 text-sm font-bold text-white/80 hover:bg-white/10 transition-colors"
+          >
+            📅 Gestión de Turnos
           </button>
         </nav>
       </aside>
