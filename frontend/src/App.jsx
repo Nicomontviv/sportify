@@ -3,21 +3,19 @@ import axios from 'axios';
 import Login from './pages/Login';
 import Registro from './pages/Registro';
 import AdminActividades from './pages/AdminActividades';
-import AdminTurnos from './pages/AdminTurnos';
 import InicioCliente from './pages/InicioCliente'; 
-
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userSession, setUserSession] = useState(null);
-  
-  // Controla si el usuario ve el login o el registro antes de loguearse
-  const [vista, setVista] = useState('login'); 
+ // 1. Buscamos primero si hay una sesión guardada (así la usamos para ambos)
+const sesionInicial = localStorage.getItem('sportify_sesion');
 
-  // Controla qué pantalla ve el admin después del login
-  // Valores posibles: 'actividades' | 'turnos'
-  // En el futuro se pueden agregar más: 'informes', 'empleados', etc.
-  const [vistaAdmin, setVistaAdmin] = useState('actividades');
+// 2. Estado para saber si está logueado (Si hay sesión inicial, arranca en true, si no, en false)
+const [isLoggedIn, setIsLoggedIn] = useState(sesionInicial ? true : false);
 
+// 3. Estado para los datos del usuario (Si hay sesión, la convierte en objeto, si no, null)
+const [userSession, setUserSession] = useState(sesionInicial ? JSON.parse(sesionInicial) : null);  
+
+// 4. NUEVO ESTADO: Controla si el usuario ve el login o el registro antes de loguearse
+const [vista, setVista] = useState('login');
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -36,7 +34,9 @@ function App() {
       const response = await axios.get('http://127.0.0.1:5000/api/actividades');
       if (response.data.status === 'success') setActividades(response.data.actividades);
     } catch (error) {
-      console.error("Error al cargar disciplinas");
+      console.error("Error al cargar disciplinas");edll
+      a
+      
     }
   };
 
@@ -52,6 +52,7 @@ function App() {
       if (response.data.status === 'success') {
         setUserSession(response.data.user);
         setIsLoggedIn(true);
+        localStorage.setItem('sportify_sesion', JSON.stringify(response.data.user));
       }
     } catch (error) {
       setLoginError(error.response?.data?.message || 'Error al iniciar sesión');
@@ -67,7 +68,11 @@ function App() {
     setPrecioActividad(actividad.precio_base.toString());
     setDescripcionActividad(actividad.descripcion || '');
   };
-
+  const cerrarSesionTotal = () => {
+  setIsLoggedIn(false);
+  setUserSession(null);
+  localStorage.removeItem('sportify_sesion');
+};
   const cancelarEdicion = () => {
     setModoFormulario('crear');
     setIdActividadAEditar(null);
@@ -83,11 +88,10 @@ function App() {
 
     const payload = { nombre: nombreActividad, precio_base: precioActividad, descripcion: descripcionActividad };
     const config = {
-      headers: {
-        'X-User-Role': userSession?.administrador ? 'admin' : 'cliente',
-        'X-User-Id': userSession?.id
-      }
-    };
+  headers: {
+    'X-User-Id': userSession?.id // <-- Cambiamos esto para pasar el ID real
+  }
+};
     try {
       if (modoFormulario === 'crear') {
         const response = await axios.post('http://127.0.0.1:5000/api/actividades', payload, config);
@@ -108,49 +112,41 @@ function App() {
       setMensajeErrorActividad(error.response?.data?.message || 'Error en la operación');
     }
   };
-
-  return (
+return (
     <>
-      {!isLoggedIn ? (
-        vista === 'login' ? (
-          <Login 
-            loginEmail={loginEmail} setLoginEmail={setLoginEmail}
-            loginPassword={loginPassword} setLoginPassword={setLoginPassword}
-            loginError={loginError} handleLogin={handleLogin}
-            alCambiarVista={() => setVista('registro')}
-          />
-        ) : (
-          <Registro 
-            alCambiarVista={() => setVista('login')}
-          />
-        )
-      ) : (
-        // SI ESTÁ LOGUEADO: si es admin, mostramos una de las pantallas según vistaAdmin
+     {!isLoggedIn ? (
+  vista === 'login' ? (
+    <Login 
+      loginEmail={loginEmail} setLoginEmail={setLoginEmail}
+      loginPassword={loginPassword} setLoginPassword={setLoginPassword}
+      loginError={loginError} handleLogin={handleLogin}
+      alCambiarVista={() => setVista('registro')} // <-- Agregamos esto
+    />
+  ) : (
+    <Registro 
+      alCambiarVista={() => setVista('login')} // <-- Agregamos esto
+    />
+  )
+) : (
+        // SI ESTÁ LOGUEADO: Si el objeto administrador existe, es Admin. Si es null/undefined, es Cliente.
         userSession?.administrador ? (
-          vistaAdmin === 'actividades' ? (
-            <AdminActividades 
-              userSession={userSession} setIsLoggedIn={setIsLoggedIn} actividades={actividades}
-              mensajeExito={mensajeExito} mensajeErrorActividad={mensajeErrorActividad}
-              modoFormulario={modoFormulario} nombreActividad={nombreActividad} setNombreActividad={setNombreActividad}
-              precioActividad={precioActividad} setPrecioActividad={setPrecioActividad}
-              descripcionActividad={descripcionActividad} setDescripcionActividad={setDescripcionActividad}
-              seleccionarParaModificar={seleccionarParaModificar} cancelarEdicion={cancelarEdicion}
-              handleFormularioActividad={handleFormularioActividad}
-              cargarActividades={cargarActividades}
-              irAGestionTurnos={() => setVistaAdmin('turnos')}
-            />
-          ) : (
-            <AdminTurnos
-              userSession={userSession}
-              setIsLoggedIn={setIsLoggedIn}
-              volverAActividades={() => setVistaAdmin('actividades')}
-            />
-          )
-        ) : (
-          <InicioCliente 
-            userSession={userSession} 
-            setIsLoggedIn={setIsLoggedIn} 
+          <AdminActividades 
+            userSession={userSession} setIsLoggedIn={setIsLoggedIn} actividades={actividades}
+            mensajeExito={mensajeExito} mensajeErrorActividad={mensajeErrorActividad}
+            modoFormulario={modoFormulario} nombreActividad={nombreActividad} setNombreActividad={setNombreActividad}
+            precioActividad={precioActividad} setPrecioActividad={setPrecioActividad}
+            descripcionActividad={descripcionActividad} setDescripcionActividad={setDescripcionActividad}
+            seleccionarParaModificar={seleccionarParaModificar} cancelarEdicion={cancelarEdicion}
+            handleFormularioActividad={handleFormularioActividad}
+            cargarActividades={cargarActividades}
           />
+        ) : (
+          // Si no es admin, va directo a tu pantalla de cliente común
+          // Si no es admin, va directo a tu pantalla de cliente común
+<InicioCliente 
+  userSession={userSession} 
+  onLogout={cerrarSesionTotal} // 👈 Cambiamos las dos props viejas por esta sola
+/>
         )
       )}
     </>

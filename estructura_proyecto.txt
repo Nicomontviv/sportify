@@ -1,32 +1,36 @@
 ====================================================================
 📁 ESTRUCTURA DEL PROYECTO (Generada con find)
-Fecha: Tue May 19 18:13:19     2026
+Fecha: Wed, May 20, 2026  9:45:18 PM
 ====================================================================
 .
-./README.md
 ./backend
 ./backend/app.py
 ./backend/helpers
 ./backend/helpers/turnos_helper.py
 ./backend/models.py
+./backend/pytest.ini
 ./backend/requirements.txt
 ./backend/routes
 ./backend/routes/actividades.py
 ./backend/routes/auth.py
+./backend/routes/turnos.py
 ./backend/seeds.py
+./backend/test
+./backend/test/conftest.py
+./backend/test/test_actividades.py
 ./database
 ./database/sportify.sql
 ./estructura_proyecto.txt
 ./frontend
-./frontend/README.md
 ./frontend/eslint.config.js
 ./frontend/index.html
-./frontend/package-lock.json
 ./frontend/package.json
+./frontend/package-lock.json
 ./frontend/postcss.config.js
 ./frontend/public
 ./frontend/public/favicon.svg
 ./frontend/public/icons.svg
+./frontend/README.md
 ./frontend/src
 ./frontend/src/App.css
 ./frontend/src/App.jsx
@@ -38,11 +42,13 @@ Fecha: Tue May 19 18:13:19     2026
 ./frontend/src/main.jsx
 ./frontend/src/pages
 ./frontend/src/pages/AdminActividades.jsx
+./frontend/src/pages/AdminTurnos.jsx
 ./frontend/src/pages/InicioCliente.jsx
 ./frontend/src/pages/Login.jsx
 ./frontend/src/pages/Registro.jsx
 ./frontend/tailwind.config.js
 ./frontend/vite.config.js
 ./guia rapida git.txt
+./README.md
 ./ver_proyecto.sh
 ====================================================================

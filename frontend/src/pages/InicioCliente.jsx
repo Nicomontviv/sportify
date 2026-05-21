@@ -1,6 +1,6 @@
 import React from 'react';
 
-const InicioCliente = ({ userSession, setIsLoggedIn }) => {
+const InicioCliente = ({ userSession,onLogout}) => {
   return (
     <div className="min-h-screen bg-[#F5F5F5] p-6">
       <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md">
@@ -11,7 +11,10 @@ const InicioCliente = ({ userSession, setIsLoggedIn }) => {
          <button 
   onClick={() => {
     if (window.confirm("¿Estás seguro de que querés cerrar sesión?")) {
-      setIsLoggedIn(false);
+      onLogout();
+    
+    // 3. 🔥 ¡NUEVO! Borramos la sesión del navegador para que no se quede pegada al dar F5
+    localStorage.removeItem('sportify_sesion');
     }
   }} 
   className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition">
