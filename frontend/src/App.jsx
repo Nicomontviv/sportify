@@ -5,6 +5,7 @@ import Registro from './pages/Registro';
 import AdminActividades from './pages/AdminActividades';
 import AdminTurnos from './pages/AdminTurnos';
 import InicioCliente from './pages/InicioCliente'; 
+import InicioEmpleado from './pages/InicioEmpleado'; // NUEVO: vista del empleado
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -146,6 +147,12 @@ function App() {
               volverAActividades={() => setVistaAdmin('actividades')}
             />
           )
+        ) : userSession?.empleado ? (
+          // NUEVO: Si es empleado, mostramos el panel del empleado
+          <InicioEmpleado
+            userSession={userSession}
+            setIsLoggedIn={setIsLoggedIn}
+          />
         ) : (
           <InicioCliente 
             userSession={userSession} 

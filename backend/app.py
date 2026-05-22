@@ -8,6 +8,7 @@ from models import db
 from routes.auth import auth_bp
 from routes.actividades import actividades_bp
 from routes.turnos import turnos_bp  # NUEVO
+from routes.pagos import pagos_bp
 
 load_dotenv()
 
@@ -28,6 +29,7 @@ db.init_app(app)
 app.register_blueprint(auth_bp, url_prefix='/api')
 app.register_blueprint(actividades_bp, url_prefix='/api/actividades')
 app.register_blueprint(turnos_bp, url_prefix='/api/turnos')  # NUEVO
+app.register_blueprint(pagos_bp, url_prefix='/api/pagos')
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
