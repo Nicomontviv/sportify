@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from models import db, Reserva, Clase, Turno, Actividad, Usuario
+from datetime import date
 
 reservas_bp = Blueprint('reservas', __name__)
 
@@ -68,21 +69,25 @@ def cancelar_reserva(id):
 @reservas_bp.route('/<int:user_id>', methods=['GET'])
 def ver_reservas(user_id):
     try:
+        # Solo mostramos reservas activas, las canceladas no le sirven al usuario
         reservas = Reserva.query.filter(Reserva.usuario_id == user_id).all()
         
         resultado = []
         for r in reservas:
             clase = db.session.get(Clase, r.clase_id)
-            turno = db.session.get(Turno, clase.turno_id)
-            actividad = db.session.get(Actividad, turno.actividad_id)
-            
-            resultado.append({
-                "nombre_actividad" : actividad.nombre,
-                "dia_actividad" : turno.dia_semana,
-                "horario_inicio" : str(turno.horario_inicio),
-                "horario_fin" : str(turno.horario_fin),
-                "estado" : r.estado
-                            })
+            if clase.fecha > date.today():
+                turno = db.session.get(Turno, clase.turno_id)
+                actividad = db.session.get(Actividad, turno.actividad_id)
+                
+                if r.estado != 'cancelada_usuario' and r.estado != 'cancelada_centro':
+                    resultado.append({
+                        "nombre_actividad" : actividad.nombre,
+                        "dia_actividad" : turno.dia_semana,
+                        "horario_inicio" : str(turno.horario_inicio),
+                        "horario_fin" : str(turno.horario_fin),
+                        "fecha": str(clase.fecha),
+                        "estado" : r.estado
+                                    })
 
         return jsonify({"status": "success", "reservas": resultado}), 200
             
