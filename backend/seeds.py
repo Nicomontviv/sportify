@@ -192,7 +192,7 @@ def cargar_datos_base():
                     clase_id=primera_clase_padel.id,
                     usuario_id=admin_user.id,
                     estado='confirmada',
-                    metodo_pago='mercado_pago',
+                    metodo_pago='efectivo',
                     monto_total=16000.00,
                     monto_pagado=5000.00
                 )

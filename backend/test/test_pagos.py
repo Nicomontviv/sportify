@@ -93,9 +93,12 @@ def reserva_pendiente(app_context, usuario_casual):
 
 # ==========================================
 # DATOS DE TARJETA VÁLIDOS
+# 1111111111111111 = pago exitoso
+# 2222222222222222 = fondos insuficientes
+# 3333333333333333 = tarjeta con problemas
 # ==========================================
 TARJETA_VALIDA = {
-    "numero_tarjeta": "4111111111111111",
+    "numero_tarjeta": "1111111111111111",
     "titular": "Juan Perez",
     "vencimiento": "12/27",
     "cvv": "123"
@@ -169,7 +172,7 @@ def test_pago_virtual_mes_vencimiento_invalido(client, usuario_casual, reserva_p
     headers = {'X-User-Id': str(usuario_casual.id)}
     payload = {
         "pagos": [{"reserva_id": reserva_pendiente.id, "tipo_pago": "senia"}],
-        "numero_tarjeta": "4111111111111111",
+        "numero_tarjeta": "1111111111111111",
         "titular": "Juan Perez",
         "vencimiento": "13/27",  # Mes 13 inválido
         "cvv": "123"
@@ -186,7 +189,7 @@ def test_pago_virtual_tarjeta_vencida(client, usuario_casual, reserva_pendiente)
     headers = {'X-User-Id': str(usuario_casual.id)}
     payload = {
         "pagos": [{"reserva_id": reserva_pendiente.id, "tipo_pago": "senia"}],
-        "numero_tarjeta": "4111111111111111",
+        "numero_tarjeta": "1111111111111111",
         "titular": "Juan Perez",
         "vencimiento": "12/25",  # Año 2025 vencido
         "cvv": "123"
@@ -203,7 +206,7 @@ def test_pago_virtual_cvv_invalido(client, usuario_casual, reserva_pendiente):
     headers = {'X-User-Id': str(usuario_casual.id)}
     payload = {
         "pagos": [{"reserva_id": reserva_pendiente.id, "tipo_pago": "senia"}],
-        "numero_tarjeta": "4111111111111111",
+        "numero_tarjeta": "1111111111111111",
         "titular": "Juan Perez",
         "vencimiento": "12/27",
         "cvv": "12"  # Solo 2 dígitos
@@ -220,7 +223,7 @@ def test_pago_virtual_titular_vacio(client, usuario_casual, reserva_pendiente):
     headers = {'X-User-Id': str(usuario_casual.id)}
     payload = {
         "pagos": [{"reserva_id": reserva_pendiente.id, "tipo_pago": "senia"}],
-        "numero_tarjeta": "4111111111111111",
+        "numero_tarjeta": "1111111111111111",
         "titular": "",  # Titular vacío
         "vencimiento": "12/27",
         "cvv": "123"
@@ -241,6 +244,40 @@ def test_pago_virtual_sin_reservas(client, usuario_casual):
 
     assert response.status_code == 200
     assert data['reservas'] == []
+
+def test_pago_virtual_fondos_insuficientes(client, usuario_casual, reserva_pendiente):
+    """Escenario 11: Pago rechazado por fondos insuficientes"""
+    headers = {'X-User-Id': str(usuario_casual.id)}
+    payload = {
+        "pagos": [{"reserva_id": reserva_pendiente.id, "tipo_pago": "senia"}],
+        "numero_tarjeta": "2222222222222222",
+        "titular": "Juan Perez",
+        "vencimiento": "12/27",
+        "cvv": "123"
+    }
+
+    response = client.post('/api/pagos/virtual', headers=headers, json=payload)
+    data = response.get_json()
+
+    assert response.status_code == 400
+    assert data['message'] == 'Pago rechazado: fondos insuficientes'
+
+def test_pago_virtual_tarjeta_con_problemas(client, usuario_casual, reserva_pendiente):
+    """Escenario 12: Pago rechazado por tarjeta con problemas"""
+    headers = {'X-User-Id': str(usuario_casual.id)}
+    payload = {
+        "pagos": [{"reserva_id": reserva_pendiente.id, "tipo_pago": "senia"}],
+        "numero_tarjeta": "3333333333333333",
+        "titular": "Juan Perez",
+        "vencimiento": "12/27",
+        "cvv": "123"
+    }
+
+    response = client.post('/api/pagos/virtual', headers=headers, json=payload)
+    data = response.get_json()
+
+    assert response.status_code == 400
+    assert data['message'] == 'Pago rechazado: tarjeta con problemas'
 
 
 # ==========================================

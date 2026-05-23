@@ -71,6 +71,10 @@ def _validar_tarjeta(numero, titular, vencimiento, cvv):
     - Titular: no puede estar vacío
     - Vencimiento: formato MM/AA, mes entre 01 y 12, fecha >= fecha actual
     - CVV: exactamente 3 dígitos numéricos
+    Números especiales de simulación:
+    - 1111111111111111: pago exitoso
+    - 2222222222222222: fondos insuficientes
+    - 3333333333333333: tarjeta con problemas
     Retorna None si todo es válido, o un mensaje de error específico si algo falla.
     """
     # Validar número de tarjeta: exactamente 16 dígitos numéricos
@@ -101,6 +105,12 @@ def _validar_tarjeta(numero, titular, vencimiento, cvv):
     # Validar CVV: exactamente 3 dígitos numéricos (Escenario 7)
     if not cvv or not re.fullmatch(r'\d{3}', str(cvv)):
         return "El código de seguridad debe tener exactamente 3 dígitos"
+
+    # Simulación de resultados según número de tarjeta (Escenarios 11 y 12)
+    if str(numero) == '2222222222222222':
+        return "Pago rechazado: fondos insuficientes"
+    if str(numero) == '3333333333333333':
+        return "Pago rechazado: tarjeta con problemas"
 
     return None  # Todo válido
 
@@ -208,7 +218,7 @@ def pago_virtual():
     if not pagos or not isinstance(pagos, list) or len(pagos) == 0:
         return jsonify({"status": "error", "message": "Debe enviar al menos un pago."}), 400
 
-    # Validar datos de la tarjeta (RN1.3 - Escenarios 4 al 8)
+    # Validar datos de la tarjeta (RN1.3 - Escenarios 4 al 12)
     error_tarjeta = _validar_tarjeta(numero_tarjeta, titular, vencimiento, cvv)
     if error_tarjeta:
         return jsonify({"status": "error", "message": error_tarjeta}), 400

@@ -121,7 +121,7 @@ class Reserva(db.Model):
     estado = db.Column(db.Enum('confirmada', 'cancelada_usuario', 'cancelada_centro', 'pendiente_pago', 'asistio', 'ausente'), default='pendiente_pago', nullable=False)
     
     # AGREGADO: tarjeta_virtual para pagos online simulados (RN1.1)
-    metodo_pago = db.Column(db.Enum('mercado_pago', 'efectivo', 'membresia', 'tarjeta_virtual'), nullable=False)
+    metodo_pago = db.Column(db.Enum('tarjeta_virtual', 'efectivo', 'membresia'), nullable=False)
 
     # Columnas de montos reales
     monto_total = db.Column(db.Numeric(10, 2), nullable=False)

@@ -46,7 +46,6 @@ const MisPagos = ({ userSession, onVolver }) => {
   // Etiquetas para el método de pago
   const etiquetaMetodo = {
     tarjeta_virtual: 'Tarjeta Virtual',
-    mercado_pago: 'Mercado Pago',
     efectivo: 'Efectivo',
     membresia: 'Membresía'
   };

@@ -151,7 +151,7 @@ CREATE TABLE reserva (
   fecha_reserva  DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   estado         ENUM('confirmada','cancelada_usuario','cancelada_centro','pendiente_pago','asistio','ausente')
                                 NOT NULL DEFAULT 'pendiente_pago',
-  metodo_pago    ENUM('mercado_pago','efectivo','membresia','tarjeta_virtual') NOT NULL,
+  metodo_pago    ENUM('tarjeta_virtual','efectivo','membresia') NOT NULL,
   monto_total    DECIMAL(10,2)  NOT NULL,
   monto_pagado   DECIMAL(10,2)  NOT NULL DEFAULT 0.00,
   resultado_pago VARCHAR(100),                               -- respuesta de MP
