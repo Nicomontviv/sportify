@@ -121,7 +121,7 @@ def ver_reservas(user_id):
                 turno = db.session.get(Turno, clase.turno_id)
                 inicio_clase = datetime.combine(clase.fecha, turno.horario_inicio)
                 limite_cancelacion = inicio_clase - timedelta(hours=1)
-                if datetime.now() > limite_cancelacion:
+                if datetime.now() < limite_cancelacion:
                     actividad = db.session.get(Actividad, turno.actividad_id)
                     
                     if r.estado != 'cancelada_usuario' and r.estado != 'cancelada_centro':
