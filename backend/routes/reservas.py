@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from models import Credito, db, Reserva, Clase, Turno, Actividad, Usuario
+from sqlalchemy.orm import joinedload
 from datetime import date, datetime, timedelta
 
 reservas_bp = Blueprint('reservas', __name__)
@@ -53,6 +54,7 @@ def crear_reserva():
 
     try:
         db.session.add(nueva_reserva)
+        clase_seleccionada.cupo_disponible -=1
         db.session.commit()
         return jsonify({"status": "success", "message": "Reserva creada correctamente"}), 201
     
@@ -63,15 +65,20 @@ def crear_reserva():
     
 @reservas_bp.route('/<int:id>', methods=['PUT'])
 def cancelar_reserva(id):
-    user_id = request.headers.get('X-User-Id')
-    usuario = db.session.get(Usuario, int(user_id))
-    reserva = db.session.get(Reserva, id)
-    
+    user_id_raw = request.headers.get('X-User-Id')
+    if not user_id_raw:
+        return jsonify({"status": "error", "message": "Header X-User-Id requerido"}), 400
 
+    user_id = int(user_id_raw)
+    usuario = db.session.get(Usuario, user_id)
+    if not usuario:
+        return jsonify({"status": "error", "message": "Usuario no encontrado"}), 404
+
+    reserva = db.session.get(Reserva, id)
     if not reserva:
         return jsonify({"status": "error", "message": "Reserva no encontrada"}), 404
 
-    if str(reserva.usuario_id) != user_id:
+    if reserva.usuario_id != user_id:
         return jsonify({"status": "error", "message": "No tiene permiso para cancelar esta reserva"}), 403
 
     if reserva.estado == 'cancelada_usuario' or reserva.estado == 'cancelada_centro':
@@ -95,9 +102,12 @@ def cancelar_reserva(id):
     else:
         # Los usuarios abonados acumulan las cancelaciones por mes
         credito_usuario = Credito.query.filter(Credito.usuario_id == user_id, Credito.anio == ahora.year, Credito.mes == ahora.month).first()
+        if not credito_usuario:
+            return jsonify({"status": "error", "message": "Crédito del abonado no encontrado"}), 404
         credito_usuario.cancelaciones += 1
     try:
         reserva.estado='cancelada_usuario'
+        clase.cupo_disponible += 1
         db.session.commit()
         return jsonify({
             "status": "success",
@@ -109,30 +119,39 @@ def cancelar_reserva(id):
         return jsonify({"status": "error", "message": str(e)}), 500
     
 
-@reservas_bp.route('/<int:user_id>', methods=['GET'])
-def ver_reservas(user_id):
+@reservas_bp.route('', methods=['GET'])
+def ver_reservas():
+    user_id = request.args.get('usuario_id', type=int)
+    if not user_id:
+        return jsonify({"status": "error", "message": "Parámetro usuario_id requerido"}), 400
     try:
-        reservas = Reserva.query.filter(Reserva.usuario_id == user_id).all()
-        
+        # Trae todas las reservas del usuario con sus relaciones en una sola query
+        reservas = (
+            Reserva.query
+            .filter(Reserva.usuario_id == user_id)
+            .options(joinedload(Reserva.clase).joinedload(Clase.turno).joinedload(Turno.actividad))
+            .all()
+        )
+
         resultado = []
         for r in reservas:
-            clase = db.session.get(Clase, r.clase_id)
+            clase = r.clase
+            # Solo mostramos clases futuras
             if clase.fecha > date.today():
-                turno = db.session.get(Turno, clase.turno_id)
+                turno = clase.turno
                 inicio_clase = datetime.combine(clase.fecha, turno.horario_inicio)
                 limite_cancelacion = inicio_clase - timedelta(hours=1)
+                # Solo mostramos reservas donde aún es posible cancelar
                 if datetime.now() < limite_cancelacion:
-                    actividad = db.session.get(Actividad, turno.actividad_id)
-                    
                     if r.estado != 'cancelada_usuario' and r.estado != 'cancelada_centro':
                         resultado.append({
-                            "nombre_actividad" : actividad.nombre,
+                            "nombre_actividad" : turno.actividad.nombre,
                             "dia_actividad" : turno.dia_semana,
                             "horario_inicio" : str(turno.horario_inicio),
                             "horario_fin" : str(turno.horario_fin),
                             "fecha": str(clase.fecha),
                             "estado" : r.estado
-                                        })
+                        })
 
         return jsonify({"status": "success", "reservas": resultado}), 200
             
