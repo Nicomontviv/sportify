@@ -64,18 +64,38 @@ def crear_reserva():
 @reservas_bp.route('/<int:id>', methods=['PUT'])
 def cancelar_reserva(id):
     user_id = request.headers.get('X-User-Id')
-    
+    usuario = db.session.get(Usuario, int(user_id))
     reserva = db.session.get(Reserva, id)
+    
+
     if not reserva:
         return jsonify({"status": "error", "message": "Reserva no encontrada"}), 404
 
-    if str(reserva.usuario_id) != user_id: #Preguntar tipo de error
-        return jsonify({"error": "La reserva especificada no existe"}), 404
-    
-    # No se debe cancelar un reserva ya cancelada
+    if str(reserva.usuario_id) != user_id:
+        return jsonify({"status": "error", "message": "No tiene permiso para cancelar esta reserva"}), 403
+
     if reserva.estado == 'cancelada_usuario' or reserva.estado == 'cancelada_centro':
-        return jsonify({"error": "La reserva ya se encuentra cancelada"}), 409
+        return jsonify({"status": "error", "message": "La reserva ya se encuentra cancelada"}), 409
     
+    clase = db.session.get(Clase, reserva.clase_id)
+    turno = db.session.get(Turno, clase.turno_id)
+    inicio_clase = datetime.combine(clase.fecha, turno.horario_inicio)
+    ahora = datetime.now()
+
+    # REGLA DE NEGOCIO: La reserva puede cancelarse hasta 1 hora antes del inicio de la clase
+    limite_cancelacion = inicio_clase - timedelta(hours=1)
+    if ahora > limite_cancelacion:
+        return jsonify({"status": "error", "message": "No es posible cancelar la reserva: el plazo límite de cancelación (1 hora antes del inicio) ya fue superado"}), 409
+    
+    # REGLA DE NEGOCIO: Si la cancelación ocurre con más de 24 horas de anticipación, se devuelve la seña al usuario no abonado
+    if not usuario.is_abonado_actual:
+        limite_cancelacion = inicio_clase - timedelta(hours=24)
+        if ahora < limite_cancelacion:
+            reserva.monto_pagado = 0
+    else:
+        # Los usuarios abonados acumulan las cancelaciones por mes
+        credito_usuario = Credito.query.filter(Credito.usuario_id == user_id, Credito.anio == ahora.year, Credito.mes == ahora.month).first()
+        credito_usuario.cancelaciones += 1
     try:
         reserva.estado='cancelada_usuario'
         db.session.commit()
@@ -83,6 +103,7 @@ def cancelar_reserva(id):
             "status": "success",
             "message": "La reserva se cancelo con exito"
             }), 200
+    
     except Exception as e:
         db.session.rollback()
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -91,7 +112,6 @@ def cancelar_reserva(id):
 @reservas_bp.route('/<int:user_id>', methods=['GET'])
 def ver_reservas(user_id):
     try:
-        # Solo mostramos reservas activas, las canceladas no le sirven al usuario
         reservas = Reserva.query.filter(Reserva.usuario_id == user_id).all()
         
         resultado = []
