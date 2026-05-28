@@ -4,6 +4,8 @@ import Login from './pages/Login';
 import Registro from './pages/Registro';
 import AdminActividades from './pages/AdminActividades';
 import InicioCliente from './pages/InicioCliente'; 
+import InicioEmpleado from './pages/InicioEmpleado'; // NUEVO: vista del empleado
+
 function App() {
  // 1. Buscamos primero si hay una sesión guardada (así la usamos para ambos)
 const sesionInicial = localStorage.getItem('sportify_sesion');
@@ -130,23 +132,36 @@ return (
 ) : (
         // SI ESTÁ LOGUEADO: Si el objeto administrador existe, es Admin. Si es null/undefined, es Cliente.
         userSession?.administrador ? (
-          <AdminActividades 
-            userSession={userSession} setIsLoggedIn={setIsLoggedIn} actividades={actividades}
-            mensajeExito={mensajeExito} mensajeErrorActividad={mensajeErrorActividad}
-            modoFormulario={modoFormulario} nombreActividad={nombreActividad} setNombreActividad={setNombreActividad}
-            precioActividad={precioActividad} setPrecioActividad={setPrecioActividad}
-            descripcionActividad={descripcionActividad} setDescripcionActividad={setDescripcionActividad}
-            seleccionarParaModificar={seleccionarParaModificar} cancelarEdicion={cancelarEdicion}
-            handleFormularioActividad={handleFormularioActividad}
-            cargarActividades={cargarActividades}
+          vistaAdmin === 'actividades' ? (
+            <AdminActividades 
+              userSession={userSession} setIsLoggedIn={setIsLoggedIn} actividades={actividades}
+              mensajeExito={mensajeExito} mensajeErrorActividad={mensajeErrorActividad}
+              modoFormulario={modoFormulario} nombreActividad={nombreActividad} setNombreActividad={setNombreActividad}
+              precioActividad={precioActividad} setPrecioActividad={setPrecioActividad}
+              descripcionActividad={descripcionActividad} setDescripcionActividad={setDescripcionActividad}
+              seleccionarParaModificar={seleccionarParaModificar} cancelarEdicion={cancelarEdicion}
+              handleFormularioActividad={handleFormularioActividad}
+              cargarActividades={cargarActividades}
+              irAGestionTurnos={() => setVistaAdmin('turnos')}
+            />
+          ) : (
+            <AdminTurnos
+              userSession={userSession}
+              setIsLoggedIn={setIsLoggedIn}
+              volverAActividades={() => setVistaAdmin('actividades')}
+            />
+          )
+        ) : userSession?.empleado ? (
+          // NUEVO: Si es empleado, mostramos el panel del empleado
+          <InicioEmpleado
+            userSession={userSession}
+            setIsLoggedIn={setIsLoggedIn}
           />
         ) : (
-          // Si no es admin, va directo a tu pantalla de cliente común
-          // Si no es admin, va directo a tu pantalla de cliente común
-<InicioCliente 
-  userSession={userSession} 
-  onLogout={cerrarSesionTotal} // 👈 Cambiamos las dos props viejas por esta sola
-/>
+          <InicioCliente 
+            userSession={userSession} 
+            setIsLoggedIn={setIsLoggedIn} 
+          />
         )
       )}
     </>

@@ -88,6 +88,7 @@ class Turno(db.Model):
     activo = db.Column(db.Boolean, default=True, nullable=False)
 
     # Relación inversa con las clases generadas a partir de este turno
+    actividad = db.relationship('Actividad', backref='turnos', lazy=True)
     clases = db.relationship('Clase', backref='turno', lazy=True)
 
 
@@ -119,9 +120,40 @@ class Reserva(db.Model):
 
     # ENUM estricto de tu SQL
     estado = db.Column(db.Enum('confirmada', 'cancelada_usuario', 'cancelada_centro', 'pendiente_pago', 'asistio', 'ausente'), default='pendiente_pago', nullable=False)
-    metodo_pago = db.Column(db.Enum('mercado_pago', 'efectivo', 'membresia'), nullable=False)
+    
+    # AGREGADO: tarjeta_virtual para pagos online simulados (RN1.1)
+    metodo_pago = db.Column(db.Enum('tarjeta_virtual', 'efectivo', 'membresia'), nullable=False)
 
     # Columnas de montos reales
     monto_total = db.Column(db.Numeric(10, 2), nullable=False)
     monto_pagado = db.Column(db.Numeric(10, 2), default=0.00, nullable=False)
     #resultado_pago = db.Column(db.String(100))
+
+    # Relación con los depósitos de esta reserva
+    depositos = db.relationship('Deposito', backref='reserva', lazy=True)
+
+
+# AGREGADO: Modelo Empleado (Especialización de Usuario)
+class Empleado(db.Model):
+    __tablename__ = 'empleado'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id', onupdate='CASCADE', ondelete='RESTRICT'), nullable=False, unique=True)
+    legajo = db.Column(db.String(50), nullable=True)
+    cargo = db.Column(db.String(100), nullable=True)
+
+
+# AGREGADO: Modelo Deposito (registra cada pago: seña, total o parcial)
+class Deposito(db.Model):
+    __tablename__ = 'deposito'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    reserva_id = db.Column(db.Integer, db.ForeignKey('reserva.id', onupdate='CASCADE', ondelete='RESTRICT'), nullable=False)
+    empleado_id = db.Column(db.Integer, db.ForeignKey('empleado.id', onupdate='CASCADE', ondelete='SET NULL'), nullable=True)  # NULL si fue pago online
+    monto = db.Column(db.Numeric(10, 2), nullable=False)
+    fecha = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    comprobante = db.Column(db.String(255), nullable=True)
+    tipo = db.Column(db.Enum('senia', 'pago_total', 'pago_parcial'), nullable=False, default='senia')
+    # senia: primer pago del 50%
+    # pago_total: paga el 100% de una vez sin haber pagado nada antes
+    # pago_parcial: paga el 50% restante después de haber pagado la seña

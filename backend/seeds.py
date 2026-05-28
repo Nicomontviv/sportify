@@ -1,18 +1,19 @@
 import os
 from datetime import date, datetime, time
 from app import app, db
-from models import Usuario, Administrador, Actividad, Turno, Reserva, Clase
+from models import Usuario, Administrador, Actividad, Turno, Reserva, Clase, Empleado, Deposito
 from helpers.turnos_helper import generar_clases_para_mes
 
 def cargar_datos_base():
     print("🧼 [1/4] Limpiando residuos de turnos anteriores...")
     with app.app_context():
         try:
+            db.session.query(Deposito).delete()  # NUEVO: limpiar depósitos antes que reservas por FK
             db.session.query(Reserva).delete()
             db.session.query(Clase).delete()  # NUEVO: limpiar clases antes que turnos por FK
             db.session.query(Turno).delete()
             db.session.commit()
-            print("✔️ Tablas de turnos, clases y reservas limpias.")
+            print("✔️ Tablas de turnos, clases, reservas y depósitos limpias.")
         except Exception as e:
             db.session.rollback()
             print(f"⚠️ Alerta al limpiar (puede no haber datos todavía): {str(e)}")
@@ -55,6 +56,67 @@ def cargar_datos_base():
         db.session.commit()
         print("✔️ ¡Usuario Administrador creado de cero con contraseña encriptada!")
 
+    # NUEVO: Creamos el usuario Empleado de prueba para la demo de pagos presenciales
+    print("👷 [2.5/4] Creando usuario Empleado de prueba...")
+    with app.app_context():
+        from werkzeug.security import generate_password_hash
+
+        empleado_email = "empleado@sportify.com"
+
+        # Borramos el empleado viejo si existe
+        empleado_viejo = Usuario.query.filter_by(email=empleado_email).first()
+        if empleado_viejo:
+            Empleado.query.filter_by(usuario_id=empleado_viejo.id).delete()
+            db.session.delete(empleado_viejo)
+            db.session.commit()
+            print("🧹 Viejo empleado eliminado.")
+
+        # Creamos el usuario empleado
+        empleado_usuario = Usuario(
+            nombre="Mario",
+            apellido="Gomez",
+            dni="55555555",
+            email=empleado_email,
+            password_hash=generate_password_hash("empleado123!"),
+            fecha_nacimiento=date(1990, 5, 15)
+        )
+        db.session.add(empleado_usuario)
+        db.session.flush()
+
+        # Le asignamos el perfil de Empleado
+        perfil_empleado = Empleado(usuario_id=empleado_usuario.id, legajo="EMP001", cargo="Recepcionista")
+        db.session.add(perfil_empleado)
+        db.session.commit()
+        print("✔️ Usuario Empleado creado: empleado@sportify.com / empleado123!")
+
+    # NUEVO: Creamos un usuario casual de prueba para la demo de pagos
+    print("🙋 [2.7/4] Creando usuario Casual de prueba...")
+    with app.app_context():
+        from werkzeug.security import generate_password_hash
+
+        casual_email = "casual@sportify.com"
+
+        # Borramos el casual viejo si existe
+        casual_viejo = Usuario.query.filter_by(email=casual_email).first()
+        if casual_viejo:
+            Reserva.query.filter_by(usuario_id=casual_viejo.id).delete()
+            db.session.delete(casual_viejo)
+            db.session.commit()
+            print("🧹 Viejo usuario casual eliminado.")
+
+        # Creamos el usuario casual
+        casual_usuario = Usuario(
+            nombre="Juan",
+            apellido="Perez",
+            dni="99999999",
+            email=casual_email,
+            password_hash=generate_password_hash("casual123!"),
+            fecha_nacimiento=date(1995, 3, 20)
+        )
+        db.session.add(casual_usuario)
+        db.session.commit()
+        print("✔️ Usuario Casual creado: casual@sportify.com / casual123!")
+
     print("🏋️ [3/4] Forzando activación de disciplinas base...")
     with app.app_context():
         actividades_iniciales = [
@@ -86,6 +148,7 @@ def cargar_datos_base():
             voley_act  = Actividad.query.filter_by(nombre="Vóley").first()
             padel_act  = Actividad.query.filter_by(nombre="Pádel").first()
             admin_user = Usuario.query.filter_by(email="admin@sportify.com").first()
+            casual_user = Usuario.query.filter_by(email="casual@sportify.com").first()
 
             # Escenario 1: Turno (plantilla) de Vóley los lunes 18-19hs, cupo 12.
             turno_voley = Turno(
@@ -129,18 +192,48 @@ def cargar_datos_base():
                     clase_id=primera_clase_padel.id,
                     usuario_id=admin_user.id,
                     estado='confirmada',
-                    metodo_pago='mercado_pago',
+                    metodo_pago='efectivo',
                     monto_total=16000.00,
                     monto_pagado=5000.00
                 )
                 db.session.add(reserva_padel)
 
+            # NUEVO: Reserva 1 del usuario casual — Vóley (para demo de pagos)
+            primera_clase_voley = clases_voley[0] if clases_voley else None
+            if primera_clase_voley and casual_user:
+                primera_clase_voley.cupo_disponible -= 1  # consumimos un lugar
+                reserva_casual_voley = Reserva(
+                    clase_id=primera_clase_voley.id,
+                    usuario_id=casual_user.id,
+                    estado='pendiente_pago',
+                    metodo_pago='tarjeta_virtual',
+                    monto_total=12000.00,
+                    monto_pagado=0.00  # no pagó nada todavía
+                )
+                db.session.add(reserva_casual_voley)
+
+            # NUEVO: Reserva 2 del usuario casual — Pádel (para demo escenario 3: pago múltiple)
+            segunda_clase_padel = clases_padel[1] if len(clases_padel) > 1 else None
+            if segunda_clase_padel and casual_user:
+                segunda_clase_padel.cupo_disponible -= 1  # consumimos un lugar
+                reserva_casual_padel = Reserva(
+                    clase_id=segunda_clase_padel.id,
+                    usuario_id=casual_user.id,
+                    estado='pendiente_pago',
+                    metodo_pago='tarjeta_virtual',
+                    monto_total=16000.00,
+                    monto_pagado=0.00  # no pagó nada todavía
+                )
+                db.session.add(reserva_casual_padel)
+
             db.session.commit()
             print(f"✔️ Escenarios montados: 2 turnos (plantillas), "
                   f"{len(clases_voley) + len(clases_padel)} clases generadas para junio.")
+            print("✔️ 2 reservas de prueba creadas para usuario casual (pendientes de pago).")
         except Exception as e:
             db.session.rollback()
             print(f"⚠️ Nota: No se pudieron montar los turnos de prueba: {str(e)}")
+
 if __name__ == "__main__":
     with app.app_context():
         cargar_datos_base()

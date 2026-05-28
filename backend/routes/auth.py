@@ -2,7 +2,7 @@ import re  # Para validar el carácter especial exigido por el SRS
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
-from models import db, Usuario, Administrador
+from models import db, Usuario, Administrador, Empleado
 
 # Creamos el Blueprint para Autenticación
 auth_bp = Blueprint('auth', __name__)
@@ -110,25 +110,42 @@ def login():
         
     # 2. Buscamos si existe en la tabla de administradores
     admin_profile = Administrador.query.filter_by(usuario_id=user.id).first()
+
+    #Buscamos si existe en la tabla de empleados
+    empleado_profile = Empleado.query.filter_by(usuario_id=user.id).first()
     
     # 3. SI ES ADMIN: Respondemos con éxito y le mandamos el objeto administrador para React
     if admin_profile:
+        # Si es admin, devolvemos el perfil de administrador 
         return jsonify({
             "status": "success",
             "user": {
                 "id": user.id,
                 "nombre": user.nombre,
-                "administrador": { "id": admin_profile.id } # Esto activa la vista de Nico en React
+                "administrador": { "id": admin_profile.id }
             }
         }), 200
-        
-    # 4. SI NO ES ADMIN (O sea, es un cliente común): ¡También respondemos con éxito!
-    else:
+
+    # NUEVO: Si no es admin pero es empleado, devolvemos el perfil de empleado
+    elif empleado_profile:
         return jsonify({
             "status": "success",
             "user": {
                 "id": user.id,
                 "nombre": user.nombre,
-                "administrador": None # Al ser None, activa tu vista de InicioCliente en React
+                "administrador": None,  
+                "empleado": { "id": empleado_profile.id }  
+            }
+        }), 200
+
+    # 4. SI NO ES ADMIN NI EMPLEADO (O sea, es un cliente común): 
+    else:
+        # Si no es admin ni empleado, es un cliente común 
+        return jsonify({
+            "status": "success",
+            "user": {
+                "id": user.id,
+                "nombre": user.nombre,
+                "administrador": None
             }
         }), 200

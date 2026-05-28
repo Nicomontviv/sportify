@@ -189,6 +189,7 @@ def crear_turno():
     except (TypeError, ValueError):
         return jsonify({"status": "error", "message": "El cupo debe ser un número entero positivo."}), 400
 
+    alcance = data.get('alcance', '3meses')
     horario_fin = _calcular_horario_fin(horario_inicio)
 
     # ¿Ya existe un turno (activo o inactivo) en esa franja para esa actividad?
@@ -225,8 +226,8 @@ def crear_turno():
 
         db.session.flush()  # necesitamos turno.id para generar clases
 
-        # Generamos clases a 3 meses vista
-        clases_generadas = _generar_clases_futuras(turno)
+        # Generamos clases según el alcance elegido por el admin
+        clases_generadas = _generar_clases_futuras(turno, alcance)
 
         db.session.commit()
         return jsonify({
@@ -412,11 +413,13 @@ def eliminar_turno(turno_id):
         clases_con_reservas = 0
 
         for clase in clases_futuras:
+            # Al eliminar el turno se dan de baja TODAS las clases futuras,
+            # tengan o no reservas. Las que tienen reservas se cancelan
+            # (en el futuro acá iría el reembolso + notificación al usuario).
             if _clase_tiene_reservas(clase.id):
                 clases_con_reservas += 1
-            else:
-                clase.activo = False
-                clases_dadas_de_baja += 1
+            clase.activo = False
+            clases_dadas_de_baja += 1
 
         db.session.commit()
         return jsonify({
@@ -424,7 +427,7 @@ def eliminar_turno(turno_id):
             "message": "Turno dado de baja correctamente.",
             "detalles": {
                 "clases_futuras_dadas_de_baja": clases_dadas_de_baja,
-                "clases_futuras_con_reservas_preservadas": clases_con_reservas
+                "clases_con_reservas_canceladas": clases_con_reservas
             }
         }), 200
 
@@ -504,9 +507,29 @@ def eliminar_clase(clase_id):
 # ============================================================
 # HELPER INTERNO: generar clases futuras a 3 meses
 # ============================================================
-def _generar_clases_futuras(turno):
+
+def _calcular_fecha_hasta(hoy, alcance):
+    """Traduce el alcance elegido por el admin a una fecha límite."""
+    if alcance == 'proxima':
+        return hoy + timedelta(days=7)
+    elif alcance == '2semanas':
+        return hoy + timedelta(days=14)
+    elif alcance == '3semanas':
+        return hoy + timedelta(days=21)
+    elif alcance == 'resto_mes':
+        if hoy.month == 12:
+            return date(hoy.year, 12, 31)
+        primer_dia_mes_sig = date(hoy.year, hoy.month + 1, 1)
+        return primer_dia_mes_sig - timedelta(days=1)
+    elif alcance == '2meses':
+        return hoy + timedelta(days=60)
+    else:  # '3meses' o cualquier valor desconocido → default
+        return hoy + timedelta(days=90)
+
+def _generar_clases_futuras(turno, alcance='3meses'):
     """
-    Genera clases para el turno desde mañana hasta 3 meses adelante.
+    Genera clases para el turno desde mañana hasta la fecha límite que
+    define el 'alcance'.
     - Si NO existe una clase para esa fecha + turno: la crea.
     - Si existe una clase ACTIVA: no hace nada.
     - Si existe una clase INACTIVA: la reactiva y le actualiza el cupo
@@ -514,7 +537,7 @@ def _generar_clases_futuras(turno):
     """
     hoy = date.today()
     fecha_desde = hoy + timedelta(days=1)
-    fecha_hasta = hoy + timedelta(days=VENTANA_GENERACION_DIAS)
+    fecha_hasta = _calcular_fecha_hasta(hoy, alcance)
 
     clases_candidatas = generar_clases_para_rango(turno, fecha_desde, fecha_hasta)
     clases_efectivamente_creadas = []

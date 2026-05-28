@@ -43,6 +43,7 @@ const AdminTurnos = ({ userSession, volverAActividades, setIsLoggedIn }) => {
   const [formDia, setFormDia] = useState('lunes');
   const [formHora, setFormHora] = useState('08:00');
   const [formCupo, setFormCupo] = useState('');
+  const [formAlcance, setFormAlcance] = useState('3meses');
 
   // Mensajes
   const [mensajeExito, setMensajeExito] = useState('');
@@ -106,13 +107,8 @@ const AdminTurnos = ({ userSession, volverAActividades, setIsLoggedIn }) => {
   };
 
  useEffect(() => {
-    // Al entrar a la pantalla: 1) regenerar clases faltantes, 2) cargar turnos y actividades
-    const inicializar = async () => {
-      await regenerarClases();
-      await cargarTurnos();
-      await cargarActividades();
-    };
-    inicializar();
+    cargarTurnos();
+    cargarActividades();
   }, []);
 
   useEffect(() => {
@@ -133,6 +129,7 @@ const AdminTurnos = ({ userSession, volverAActividades, setIsLoggedIn }) => {
     setFormDia('lunes');
     setFormHora('08:00');
     setFormCupo('');
+    setFormAlcance('3meses');
     setModalAbierto('crear');
   };
 
@@ -183,7 +180,8 @@ const AdminTurnos = ({ userSession, volverAActividades, setIsLoggedIn }) => {
         actividad_id: formActividad,
         dia_semana: formDia,
         horario_inicio: formHora,
-        cupo_maximo: formCupo
+        cupo_maximo: formCupo,
+        alcance: formAlcance
       }, { headers: headersAdmin });
 
       if (res.data.status === 'success') {
@@ -540,6 +538,21 @@ const AdminTurnos = ({ userSession, volverAActividades, setIsLoggedIn }) => {
                     onChange={e => setFormCupo(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 p-2 text-sm"
                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-1">Generar clases hasta</label>
+                  <select
+                    value={formAlcance}
+                    onChange={e => setFormAlcance(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 p-2 text-sm"
+                  >
+                    <option value="proxima">Solo la próxima clase</option>
+                    <option value="2semanas">2 semanas</option>
+                    <option value="3semanas">3 semanas</option>
+                    <option value="resto_mes">Lo que resta del mes</option>
+                    <option value="2meses">2 meses</option>
+                    <option value="3meses">3 meses</option>
+                  </select>
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button type="submit" className="flex-1 rounded-lg bg-sportify-green text-white py-2 text-sm font-bold hover:bg-sportify-deepSea">

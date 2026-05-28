@@ -144,3 +144,4 @@ vite.config.ts.timestamp-*
 
 backend/venv/
 backend/.env
+*.yml
