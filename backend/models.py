@@ -88,6 +88,7 @@ class Turno(db.Model):
     activo = db.Column(db.Boolean, default=True, nullable=False)
 
     # Relación inversa con las clases generadas a partir de este turno
+    actividad = db.relationship('Actividad', backref='turnos', lazy=True)
     clases = db.relationship('Clase', backref='turno', lazy=True)
 
 

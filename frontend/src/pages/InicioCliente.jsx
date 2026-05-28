@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import MisPagos from './MisPagos';
 import PagoVirtual from './PagoVirtual';
+import MostrarActividades from './MostrarActividades';
 
 const InicioCliente = ({ userSession, setIsLoggedIn }) => {
   // Estado para controlar qué vista mostrar (agregado para pagos)
@@ -14,6 +15,11 @@ const InicioCliente = ({ userSession, setIsLoggedIn }) => {
   // Si el usuario está en "Pagar Reservas", mostramos esa vista
   if (vista === 'pago-virtual') {
     return <PagoVirtual userSession={userSession} onVolver={() => setVista('inicio')} />;
+  }
+
+  // Si el usuario está en "Actividades", mostramos esa vista
+  if (vista === 'actividades') {
+    return <MostrarActividades userSession={userSession} onVolver={() => setVista('inicio')} />;
   }
 
   return (
@@ -37,7 +43,7 @@ const InicioCliente = ({ userSession, setIsLoggedIn }) => {
         <p className="text-gray-600 mb-6">Bienvenido al panel de socios de <span className="font-semibold text-[#1E90FF]">Sportify</span>. Desde acá vas a poder gestionar tus turnos.</p>
 
         {/* Botones de pagos */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-3 gap-4 mb-6">
           <button
             onClick={() => setVista('pago-virtual')}
             className="bg-[#1E90FF] hover:bg-blue-600 text-white font-bold py-4 px-6 rounded-lg transition text-left"
@@ -52,14 +58,30 @@ const InicioCliente = ({ userSession, setIsLoggedIn }) => {
             <p className="text-lg">🧾 Mis Pagos</p>
             <p className="text-sm font-normal text-gray-500">Consultá tu historial de pagos</p>
           </button>
+          <button
+            onClick={() => setVista('mis-reservas')}
+            className="bg-white hover:bg-gray-50 text-[#212121] font-bold py-4 px-6 rounded-lg transition text-left border border-gray-200"
+          >
+            <p className="text-lg">🧾 Mis Reservas</p>
+            <p className="text-sm font-normal text-gray-500">Consultá tu historial de pagos</p>
+          </button>
         </div>
-        
         {/* Espacio para el futuro Home o selector de deportes */}
-        <div className="bg-[#F5F5F5] p-6 rounded-lg border border-dashed border-gray-300 text-center text-gray-500">
-          Próximamente: Vista principal con Fútbol, Básquet, Vóley y Pádel.
+
+        <div className="grid grid-cols-2 gap-4">
+          <button
+            onClick={() => setVista('actividades')}
+            className="bg-white hover:bg-gray-50 text-[#212121] font-bold py-4 px-6 rounded-lg transition text-left border border-gray-200"
+          >
+            <p className="text-lg">Actividades</p>
+            <p className="text-sm font-normal text-gray-500">Consultá las actividades disponibles</p>
+          </button>
+
+        </div>
+         
         </div>
       </div>
-    </div>
+    
   );
 };
 
