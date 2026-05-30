@@ -74,7 +74,7 @@ def _validar_tarjeta(numero, titular, vencimiento, cvv):
     Números especiales de simulación:
     - 1111111111111111: pago exitoso
     - 2222222222222222: fondos insuficientes
-    - 3333333333333333: tarjeta con problemas
+    - 3333333333333333: tarjeta bloqueada o inhabilitada
     Retorna None si todo es válido, o un mensaje de error específico si algo falla.
     """
     # Validar número de tarjeta: exactamente 16 dígitos numéricos
@@ -108,16 +108,15 @@ def _validar_tarjeta(numero, titular, vencimiento, cvv):
 
     # Simulación de resultados según número de tarjeta (Escenarios 11 y 12)
     if str(numero) == '2222222222222222':
-        return "Pago rechazado: fondos insuficientes"
+        return "Pago denegado: fondos insuficientes"
     if str(numero) == '3333333333333333':
-        return "Pago rechazado: tarjeta con problemas"
+        return "Pago denegado: su tarjeta se encuentra bloqueada o inhabilitada"
 
     return None  # Todo válido
 
 
 # ============================================================
 # ENDPOINT AUXILIAR — RESERVAS PENDIENTES DE PAGO DEL USUARIO
-# GET /api/pagos/reservas-pendientes
 # Devuelve las reservas del usuario que tienen saldo pendiente
 # ============================================================
 @pagos_bp.route('/reservas-pendientes', methods=['GET'])
@@ -150,9 +149,8 @@ def reservas_pendientes():
 
 # ============================================================
 # ENDPOINT AUXILIAR — BUSCAR USUARIO POR DNI (para el empleado)
-# GET /api/pagos/usuario-por-dni/<dni>
 # El empleado busca un usuario por DNI para registrar su pago
-# Solo devuelve usuarios casuales (RN2.7)
+# Solo devuelve usuarios casuales 
 # ============================================================
 @pagos_bp.route('/usuario-por-dni/<string:dni>', methods=['GET'])
 def usuario_por_dni(dni):
@@ -168,7 +166,7 @@ def usuario_por_dni(dni):
         if not usuario:
             return jsonify({"status": "error", "message": "No se encontró ningún usuario con ese DNI."}), 404
 
-        # RN2.7: Verificar que no sea admin ni empleado (solo usuarios casuales)
+        #  Verificar que no sea admin ni empleado (solo usuarios casuales)
         es_admin = Administrador.query.filter_by(usuario_id=usuario.id).first()
         es_empleado_usuario = Empleado.query.filter_by(usuario_id=usuario.id).first()
         if es_admin or es_empleado_usuario:
@@ -191,9 +189,8 @@ def usuario_por_dni(dni):
 
 # ============================================================
 # HU 1 — PAGO VIRTUAL DEL USUARIO CASUAL
-# POST /api/pagos/virtual
 # El usuario elige si paga seña (50%) o total (100%) de una o varias reservas
-# El pago se procesa mediante un formulario de tarjeta simulado (pasarela interna)
+# El pago se procesa mediante un formulario de tarjeta simulado 
 # ============================================================
 @pagos_bp.route('/virtual', methods=['POST'])
 def pago_virtual():
@@ -297,7 +294,7 @@ def pago_virtual():
 
         # Mensajes según escenarios de la HU
         mensaje = "Pago de seña confirmado exitosamente" if len(pagos) == 1 and pagos[0]['tipo_pago'] == 'senia' \
-            else "Pago del saldo restante confirmado exitosamente" if len(pagos) == 1 and tipo_deposito == 'pago_parcial' \
+            else "Pago del saldo faltante confirmado exitosamente" if len(pagos) == 1 and tipo_deposito == 'pago_parcial' \
             else "Pago total confirmado exitosamente" if len(pagos) == 1 \
             else "Pago confirmado exitosamente"
 
@@ -315,7 +312,6 @@ def pago_virtual():
 
 # ============================================================
 # HU 2 — PAGO PRESENCIAL DEL USUARIO CASUAL (registrado por empleado)
-# POST /api/pagos/presencial
 # El empleado registra si cobró seña (50%) o total (100%) en efectivo
 # ============================================================
 @pagos_bp.route('/presencial', methods=['POST'])
@@ -406,9 +402,10 @@ def pago_presencial():
 
         db.session.commit()
 
-        mensaje = "Seña registrada exitosamente" if len(pagos) == 1 and pagos[0]['tipo_pago'] == 'senia' \
-            else "Pago total registrado exitosamente" if len(pagos) == 1 \
-            else "Pago registrado exitosamente"
+        mensaje = "Seña guardada exitosamente" if len(pagos) == 1 and pagos[0]['tipo_pago'] == 'senia' \
+            else "Pago total guardado exitosamente" if len(pagos) == 1 and tipo_deposito == 'pago_total' \
+            else "Pago del saldo faltante guardado exitosamente" if len(pagos) == 1 and tipo_deposito == 'pago_parcial' \
+            else "Pago guardado exitosamente"
 
         return jsonify({
             "status": "success",
@@ -424,7 +421,6 @@ def pago_presencial():
 
 # ============================================================
 # HU 3 — CONSULTAR MIS PAGOS
-# GET /api/pagos/mis-pagos?mes=5&anio=2026
 # El usuario consulta su historial de pagos filtrado por mes
 # ============================================================
 @pagos_bp.route('/mis-pagos', methods=['GET'])
