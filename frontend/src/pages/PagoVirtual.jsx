@@ -2,32 +2,21 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const PagoVirtual = ({ userSession, onVolver }) => {
-  // Estado para la lista de reservas pendientes de pago
   const [reservas, setReservas] = useState([]);
-  // Estado para los pagos seleccionados { reserva_id, tipo_pago }
   const [pagosSeleccionados, setPagosSeleccionados] = useState({});
-  // Estado para mensajes de éxito o error
   const [mensaje, setMensaje] = useState('');
-  const [tipoMensaje, setTipoMensaje] = useState(''); // 'success' o 'error'
-  // Estado para saber si está cargando
+  const [tipoMensaje, setTipoMensaje] = useState('');
   const [cargando, setCargando] = useState(false);
   const [procesando, setProcesando] = useState(false);
-
-  // Estado para mostrar u ocultar el formulario de tarjeta
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
-
-  // Estado para los datos de la tarjeta (RN1.2)
   const [tarjeta, setTarjeta] = useState({
     numero_tarjeta: '',
     titular: '',
     vencimiento: '',
     cvv: ''
   });
-
-  // Estado para errores de validación del formulario de tarjeta
   const [erroresTarjeta, setErroresTarjeta] = useState({});
 
-  // Cargar las reservas pendientes de pago del usuario al entrar
   const cargarReservasPendientes = async () => {
     setCargando(true);
     try {
@@ -49,9 +38,8 @@ const PagoVirtual = ({ userSession, onVolver }) => {
     cargarReservasPendientes();
   }, []);
 
-  // Manejar la selección del tipo de pago para cada reserva
-  // Si se toca el mismo botón que ya estaba seleccionado, se deselecciona
   const handleSeleccionPago = (reservaId, tipoPago) => {
+    setMensaje('');
     setPagosSeleccionados((prev) => {
       if (prev[reservaId] === tipoPago) {
         const nuevo = { ...prev };
@@ -62,7 +50,6 @@ const PagoVirtual = ({ userSession, onVolver }) => {
     });
   };
 
-  // Calcular el total a pagar según las selecciones
   const calcularTotal = () => {
     return reservas.reduce((total, reserva) => {
       const tipo = pagosSeleccionados[reserva.reserva_id];
@@ -72,39 +59,28 @@ const PagoVirtual = ({ userSession, onVolver }) => {
     }, 0);
   };
 
-  // Verificar si hay al menos una reserva seleccionada
   const haySeleccion = Object.keys(pagosSeleccionados).length > 0;
 
-  // Manejar cambios en los campos de la tarjeta
-  // Para numero_tarjeta y cvv: filtro estricto que solo permite números en tiempo real
   const handleTarjetaChange = (e) => {
     const { name, value } = e.target;
-
-    // Filtro de entrada: numero_tarjeta y cvv solo aceptan dígitos numéricos
     if (name === 'numero_tarjeta' || name === 'cvv') {
-      if (!/^\d*$/.test(value)) return; // Si contiene letras o caracteres especiales, ignorar
+      if (!/^\d*$/.test(value)) return;
     }
-
     setTarjeta((prev) => ({ ...prev, [name]: value }));
-    // Limpiar el error del campo que se está editando
     setErroresTarjeta((prev) => ({ ...prev, [name]: '' }));
   };
 
-  // Validar los datos de la tarjeta en el frontend (RN1.3)
   const validarTarjeta = () => {
     const errores = {};
 
-    // Validar número de tarjeta: exactamente 16 dígitos numéricos
     if (!tarjeta.numero_tarjeta || !/^\d{16}$/.test(tarjeta.numero_tarjeta)) {
       errores.numero_tarjeta = 'El número de tarjeta debe tener exactamente 16 dígitos numéricos';
     }
 
-    // Validar titular: no puede estar vacío
     if (!tarjeta.titular || tarjeta.titular.trim() === '') {
       errores.titular = 'El nombre del titular es obligatorio';
     }
 
-    // Validar vencimiento: formato MM/AA
     if (!tarjeta.vencimiento || !/^\d{2}\/\d{2}$/.test(tarjeta.vencimiento)) {
       errores.vencimiento = 'La fecha de vencimiento debe tener el formato MM/AA';
     } else {
@@ -113,16 +89,13 @@ const PagoVirtual = ({ userSession, onVolver }) => {
       const anioNum = parseInt(anio) + 2000;
       const ahora = new Date();
 
-      // Validar mes entre 01 y 12
       if (mesNum < 1 || mesNum > 12) {
         errores.vencimiento = 'El mes de vencimiento debe estar entre 01 y 12';
-      // Validar que la tarjeta no esté vencida
       } else if (anioNum < ahora.getFullYear() || (anioNum === ahora.getFullYear() && mesNum < ahora.getMonth() + 1)) {
         errores.vencimiento = 'La tarjeta está vencida';
       }
     }
 
-    // Validar CVV: exactamente 3 dígitos numéricos
     if (!tarjeta.cvv || !/^\d{3}$/.test(tarjeta.cvv)) {
       errores.cvv = 'El código de seguridad debe tener exactamente 3 dígitos';
     }
@@ -130,18 +103,15 @@ const PagoVirtual = ({ userSession, onVolver }) => {
     return errores;
   };
 
-  // Confirmar el pago
   const handleConfirmarPago = async () => {
     if (!haySeleccion) return;
 
-    // Validar datos de la tarjeta en el frontend
     const errores = validarTarjeta();
     if (Object.keys(errores).length > 0) {
       setErroresTarjeta(errores);
       return;
     }
 
-    // Armar la lista de pagos a enviar
     const pagos = Object.entries(pagosSeleccionados).map(([reservaId, tipoPago]) => ({
       reserva_id: parseInt(reservaId),
       tipo_pago: tipoPago
@@ -154,7 +124,6 @@ const PagoVirtual = ({ userSession, onVolver }) => {
         'http://127.0.0.1:5000/api/pagos/virtual',
         {
           pagos,
-          // Enviamos los datos de la tarjeta al backend para validación (RN1.3)
           numero_tarjeta: tarjeta.numero_tarjeta,
           titular: tarjeta.titular,
           vencimiento: tarjeta.vencimiento,
@@ -169,7 +138,6 @@ const PagoVirtual = ({ userSession, onVolver }) => {
         setPagosSeleccionados({});
         setTarjeta({ numero_tarjeta: '', titular: '', vencimiento: '', cvv: '' });
         setMostrarFormulario(false);
-        // Recargar las reservas pendientes
         cargarReservasPendientes();
       }
     } catch (error) {
@@ -184,7 +152,6 @@ const PagoVirtual = ({ userSession, onVolver }) => {
     <div className="min-h-screen bg-[#F5F5F5] p-6">
       <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md">
 
-        {/* Encabezado */}
         <div className="flex justify-between items-center border-b pb-4 mb-6">
           <h1 className="text-3xl font-bold text-[#212121]">
             Pagar <span className="text-[#1E90FF]">Reservas</span>
@@ -201,12 +168,10 @@ const PagoVirtual = ({ userSession, onVolver }) => {
           Seleccioná una o varias reservas y elegí si querés pagar la seña (50%) o el total.
         </p>
 
-        {/* Mensaje de cargando */}
         {cargando && (
           <p className="text-gray-500 text-center py-6">Cargando reservas...</p>
         )}
 
-        {/* Mensaje de éxito o error con colores de paleta Sportify */}
         {mensaje && (
           <div
             className="rounded p-4 mb-4 text-center font-medium border"
@@ -220,21 +185,18 @@ const PagoVirtual = ({ userSession, onVolver }) => {
           </div>
         )}
 
-        {/* Sin reservas pendientes */}
         {!cargando && reservas.length === 0 && !mensaje && (
           <div className="bg-[#F5F5F5] border border-gray-300 text-[#212121] rounded p-4 text-center">
             No tenés reservas pendientes de pago.
           </div>
         )}
 
-        {/* Lista de reservas pendientes */}
         {!cargando && reservas.length > 0 && (
           <div className="space-y-4">
             {reservas.map((reserva) => (
               <div key={reserva.reserva_id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition">
                 <div className="flex justify-between items-start flex-wrap gap-4">
                   <div>
-                    {/* Info de la clase */}
                     <p className="text-lg font-semibold text-[#212121]">
                       {reserva.actividad}
                     </p>
@@ -251,9 +213,7 @@ const PagoVirtual = ({ userSession, onVolver }) => {
                     </p>
                   </div>
 
-                  {/* Botones de selección de tipo de pago */}
                   <div className="flex gap-2">
-                    {/* Solo mostrar "Pagar seña" si no pagó nada todavía */}
                     {reserva.monto_pagado === 0 && (
                       <button
                         onClick={() => handleSeleccionPago(reserva.reserva_id, 'senia')}
@@ -275,7 +235,7 @@ const PagoVirtual = ({ userSession, onVolver }) => {
                           : 'bg-white border-[#1E90FF] text-[#1E90FF] hover:bg-blue-50'
                       }`}
                     >
-                      {reserva.monto_pagado > 0 ? 'Pagar saldo restante' : 'Pagar total (100%)'}<br />
+                      {reserva.monto_pagado > 0 ? 'Pagar saldo faltante' : 'Pagar total (100%)'}<br />
                       <span className="text-sm">${reserva.monto_pendiente.toLocaleString('es-AR')}</span>
                     </button>
                   </div>
@@ -283,7 +243,6 @@ const PagoVirtual = ({ userSession, onVolver }) => {
               </div>
             ))}
 
-            {/* Resumen del pago y formulario de tarjeta */}
             {haySeleccion && (
               <div className="border-t pt-4 mt-4">
                 <div className="flex justify-between items-center mb-4">
@@ -293,10 +252,12 @@ const PagoVirtual = ({ userSession, onVolver }) => {
                       ${calcularTotal().toLocaleString('es-AR')}
                     </span>
                   </p>
-                  {/* Botón para mostrar el formulario de tarjeta */}
                   {!mostrarFormulario && (
                     <button
-                      onClick={() => setMostrarFormulario(true)}
+                      onClick={() => {
+                        setMostrarFormulario(true);
+                        setMensaje('');
+                      }}
                       className="bg-[#1E90FF] hover:bg-[#00CED1] text-white font-bold py-3 px-8 rounded transition"
                     >
                       Ingresar datos de tarjeta
@@ -304,12 +265,10 @@ const PagoVirtual = ({ userSession, onVolver }) => {
                   )}
                 </div>
 
-                {/* Formulario de tarjeta (RN1.2) */}
                 {mostrarFormulario && (
                   <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mt-4">
                     <h2 className="text-lg font-bold text-[#212121] mb-4">💳 Datos de la tarjeta</h2>
 
-                    {/* Número de tarjeta */}
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Número de tarjeta
@@ -330,7 +289,6 @@ const PagoVirtual = ({ userSession, onVolver }) => {
                       )}
                     </div>
 
-                    {/* Titular */}
                     <div className="mb-4">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Nombre y apellido del titular
@@ -350,7 +308,6 @@ const PagoVirtual = ({ userSession, onVolver }) => {
                       )}
                     </div>
 
-                    {/* Vencimiento y CVV en la misma fila */}
                     <div className="flex gap-4 mb-6">
                       <div className="flex-1">
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -392,7 +349,6 @@ const PagoVirtual = ({ userSession, onVolver }) => {
                       </div>
                     </div>
 
-                    {/* Botones de confirmar o cancelar */}
                     <div className="flex gap-4">
                       <button
                         onClick={() => {
