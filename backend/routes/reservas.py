@@ -145,6 +145,7 @@ def ver_reservas():
                 if datetime.now() < limite_cancelacion:
                     if r.estado != 'cancelada_usuario' and r.estado != 'cancelada_centro':
                         resultado.append({
+                            "id": r.id,
                             "nombre_actividad" : turno.actividad.nombre,
                             "dia_actividad" : turno.dia_semana,
                             "horario_inicio" : str(turno.horario_inicio),

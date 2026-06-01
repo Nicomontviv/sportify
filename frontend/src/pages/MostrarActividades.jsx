@@ -37,7 +37,12 @@ const MostrarActividades = ({ userSession, onVolver }) => {
               <div className="flex justify-between items-center border-b pb-4 mb-6">
                 <h1 className="text-3xl font-bold text-[#212121]">Actividades del usuario <span className="text-[#1E90FF]">{userSession?.nombre || 'Socio'}</span>! 👋</h1>
                     
-              
+              <button
+            onClick={onVolver}
+            className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition"
+          >
+            Volver
+          </button>
               </div>
                     {actividadesDisponibles.map((actividad) => (
                         <div key={actividad.id}>
@@ -51,7 +56,7 @@ const MostrarActividades = ({ userSession, onVolver }) => {
                                 </button>
                         </div>
                     ))}
-            </div>
+              </div>
           </div>
         )}
     </div>

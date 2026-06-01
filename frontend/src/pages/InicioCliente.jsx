@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import MisPagos from './MisPagos';
 import PagoVirtual from './PagoVirtual';
 import MostrarActividades from './MostrarActividades';
+import MisReservas from './MisReservas';
 
 const InicioCliente = ({ userSession, setIsLoggedIn }) => {
   // Estado para controlar qué vista mostrar (agregado para pagos)
@@ -20,6 +21,11 @@ const InicioCliente = ({ userSession, setIsLoggedIn }) => {
   // Si el usuario está en "Actividades", mostramos esa vista
   if (vista === 'actividades') {
     return <MostrarActividades userSession={userSession} onVolver={() => setVista('inicio')} />;
+  }
+
+  // Si el usuario está en "Mis Reservas", mostramos esa vista
+  if (vista === 'mis-reservas') {
+    return <MisReservas userSession={userSession} onVolver={() => setVista('inicio')} />;
   }
 
   return (
