@@ -137,6 +137,8 @@ def cargar_datos_base():
         gonzalo_email = "gonzalo@sportify.com"
 
         gonzalo_viejo = Usuario.query.filter_by(email=gonzalo_email).first()
+        if not gonzalo_viejo:
+            gonzalo_viejo = Usuario.query.filter_by(dni="22555111").first()
         if gonzalo_viejo:
             Reserva.query.filter_by(usuario_id=gonzalo_viejo.id).delete()
             db.session.delete(gonzalo_viejo)
@@ -192,10 +194,6 @@ def cargar_datos_base():
 
             casual_user  = Usuario.query.filter_by(email="casual@sportify.com").first()   # Juan Perez
             luis_user    = Usuario.query.filter_by(email="luis@sportify.com").first()     # Luis Gonzalez
-
-            # ============================================================
-            # TURNOS
-            # ============================================================
 
             turno_futbol_viernes = Turno(
                 actividad_id=futbol_act.id,
@@ -260,10 +258,6 @@ def cargar_datos_base():
                 db.session.add(c)
             db.session.flush()
 
-            # ============================================================
-            # RESERVAS PARA HU pagovirtual — Juan Perez (5 reservas)
-            # ============================================================
-
             if clases_futbol_viernes and casual_user:
                 clases_futbol_viernes[0].cupo_disponible -= 1
                 db.session.add(Reserva(
@@ -319,10 +313,6 @@ def cargar_datos_base():
                     monto_pagado=0.00
                 ))
 
-            # ============================================================
-            # RESERVAS PARA HU pagopresencial — Luis Gonzalez (4 reservas)
-            # ============================================================
-
             if clases_futbol_viernes and luis_user:
                 clases_futbol_viernes[0].cupo_disponible -= 1
                 db.session.add(Reserva(
@@ -368,8 +358,8 @@ def cargar_datos_base():
                 ))
 
             db.session.commit()
-            print("✔️ Escenarios cargados para HU1 (Juan Perez) y HU2 (Luis Gonzalez).")
-            print("✔️ Gonzalo Lopez creado sin reservas (escenario 10 HU1 y escenario 5 HU2).")
+            print("✔️ Escenarios cargados para HU pago virtual (Juan Perez) y HU pago presencial (Luis Gonzalez).")
+            print("✔️ Gonzalo Lopez creado sin reservas (escenario 10 HU pago virtual y escenario 5 HU pago presencial).")
             print("")
             print("👤 Usuarios de prueba:")
             print("   Admin:    admin@sportify.com     / admin123       (DNI 12345678)")
