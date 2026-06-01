@@ -144,3 +144,5 @@ vite.config.ts.timestamp-*
 
 backend/venv/
 backend/.env
+
+docker-compose.yml

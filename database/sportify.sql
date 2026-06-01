@@ -24,6 +24,7 @@ CREATE TABLE actividad (
   id          INT            NOT NULL AUTO_INCREMENT,
   nombre      VARCHAR(100)   NOT NULL,
   descripcion TEXT,
+  precio_base DECIMAL(10,2)  NOT NULL DEFAULT 0.00,
   activa      TINYINT(1)     NOT NULL DEFAULT 1,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB;
@@ -150,7 +151,7 @@ CREATE TABLE reserva (
   fecha_reserva  DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
   estado         ENUM('confirmada','cancelada_usuario','cancelada_centro','pendiente_pago','asistio','ausente')
                                 NOT NULL DEFAULT 'pendiente_pago',
-  metodo_pago    ENUM('mercado_pago','efectivo','membresia') NOT NULL,
+  metodo_pago    ENUM('tarjeta_virtual','efectivo','membresia') NOT NULL,
   monto_total    DECIMAL(10,2)  NOT NULL,
   monto_pagado   DECIMAL(10,2)  NOT NULL DEFAULT 0.00,
   resultado_pago VARCHAR(100),                               -- respuesta de MP

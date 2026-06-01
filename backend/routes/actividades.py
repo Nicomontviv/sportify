@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import db, Actividad, Turno, Reserva, Usuario,Administrador
+from models import db, Actividad, Turno, Reserva, Usuario,Administrador, Clase
  
 # Creamos el Blueprint para Actividades
 actividades_bp = Blueprint('actividades', __name__)
@@ -71,7 +71,7 @@ def modificar_actividad(id):
     if user_role != 'admin':
         return jsonify({"status": "error", "message": "No autorizado"}), 403
  
-    actividad = Actividad.query.get(id)
+    actividad = db.session.get(Actividad, id)
     if not actividad:
         return jsonify({"status": "error", "message": "Actividad no encontrada"}), 404
  
@@ -105,7 +105,7 @@ def eliminar_actividad(id):
     if user_role != 'admin':
         return jsonify({"status": "error", "message": "No autorizado"}), 403
  
-    actividad = Actividad.query.get(id)
+    actividad = db.session.get(Actividad, id)
     if not actividad:
         return jsonify({"status": "error", "message": "Actividad no encontrada"}), 404
  
@@ -124,7 +124,7 @@ def eliminar_actividad(id):
         # REGLA DE NEGOCIO: Cancelar reservas confirmadas o con pago pendiente
         # BUG CORREGIDO: estado='pagada' no existe en el ENUM → buscar 'confirmada' y 'pendiente_pago'
         reservas_activas = Reserva.query.filter(
-            Reserva.turno_id == turno.id,
+            Reserva.turno_id == clase.id,
             Reserva.estado.in_(['confirmada', 'pendiente_pago'])
         ).all()
  
