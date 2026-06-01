@@ -39,21 +39,23 @@ const MostrarActividades = ({ userSession, onVolver }) => {
                     
               <button
             onClick={onVolver}
-            className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition"
+            className="bg-[#008080] hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition"
           >
             Volver
           </button>
               </div>
                     {actividadesDisponibles.map((actividad) => (
-                        <div key={actividad.id}>
-                                {actividad.nombre}
-                                {actividad.descripcion}
-                                <button
-                                    onClick={() => setActividadSeleccionada(actividad)}
-                                    className="bg-[#1E90FF] hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition"
-                                >
-                                    Ver Horarios
-                                </button>
+                        <div key={actividad.id} className="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm flex justify-between items-center">
+                            <div>
+                                <h3 className="text-lg font-bold text-[#212121]">{actividad.nombre}</h3>
+                                <p className="text-gray-500 text-sm">{actividad.descripcion}</p>
+                            </div>
+                            <button
+                                onClick={() => setActividadSeleccionada(actividad)}
+                                className="bg-[#1E90FF] hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition"
+                            >
+                                Ver Horarios
+                            </button>
                         </div>
                     ))}
               </div>

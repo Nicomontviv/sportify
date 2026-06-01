@@ -35,8 +35,8 @@ const MisReservas = ({ userSession, onVolver }) => {
         <div className="min-h-screen bg-[#F5F5F5] p-6">
             <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md">
                 <div className="flex justify-between items-center border-b pb-4 mb-6">
-                    <h1>Mis Reservas</h1>
-                    <button onClick={onVolver} className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition">Volver</button>
+                    <h1 className="text-3xl font-bold text-[#212121]">Mis Reservas</h1>
+                    <button onClick={onVolver} className="bg-[#008080] hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition">Volver</button>
                 </div>
                 {reservasDelUsuario.length === 0 ? (
                     <p>No tenés reservas activas.</p>
@@ -47,7 +47,7 @@ const MisReservas = ({ userSession, onVolver }) => {
                                 <h3 className="text-lg font-bold text-[#212121]">{reserva.nombre_actividad}</h3>
                                 <p className="text-gray-500 text-sm">{reserva.fecha} — {reserva.horario_inicio} a {reserva.horario_fin}</p>
                                 <span className={`text-xs font-semibold px-2 py-1 rounded-full ${reserva.estado === 'confirmada' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                    {reserva.estado}
+                                    {reserva.estado === 'pendiente_pago' ? 'Pendiente de pago' : 'Confirmada'}
                                 </span>
                             </div>
                             <button
