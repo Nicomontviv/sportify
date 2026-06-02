@@ -146,6 +146,7 @@ def ver_reservas():
             )
             resultado.append({
                 "id": r.id,
+                "clase_id": clase.id,
                 "nombre_actividad": turno.actividad.nombre,
                 "dia_actividad": turno.dia_semana,
                 "horario_inicio": str(turno.horario_inicio),
