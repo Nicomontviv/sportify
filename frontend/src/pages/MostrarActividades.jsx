@@ -2,103 +2,423 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const MostrarActividades = ({ userSession, onVolver }) => {
-     // Estado para listar las actividades disponibles
-        const [actividadesDisponibles, setActividadesDisponibles] = useState([]);
+  const [actividadesDisponibles, setActividadesDisponibles] = useState([]);
+  const [actividadSeleccionada, setActividadSeleccionada] = useState({});
+  const [clasesDeActividadSeleccionada, setClases] = useState([]);
+  const [mensaje, setMensaje] = useState('');
+  const [tipoMensaje, setTipoMensaje] = useState('');
 
-      // Estado para las actividades seleccionadas { actividad_id }
-        const [actividadSeleccionada, setActividadSeleccionada] = useState({});
+  // Estado de pago
+  const [pagosSeleccionados, setPagosSeleccionados] = useState({});
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [procesando, setProcesando] = useState(false);
+  const [mensajePago, setMensajePago] = useState('');
+  const [tipoMensajePago, setTipoMensajePago] = useState('');
+  const [tarjeta, setTarjeta] = useState({
+    numero_tarjeta: '',
+    titular: '',
+    vencimiento: '',
+    cvv: ''
+  });
+  const [erroresTarjeta, setErroresTarjeta] = useState({});
 
-      // Estado para listar las actividades disponibles
-        const [clasesDeActividadSeleccionada, setClases] = useState([]);
+  useEffect(() => {
+    const cargarActividadesDisponibles = async () => {
+      try {
+        const response = await axios.get('http://127.0.0.1:5000/api/actividades');
+        if (response.data.status === 'success') setActividadesDisponibles(response.data.actividades);
+      } catch {
+        console.error("Error al cargar disciplinas");
+      }
+    };
+    cargarActividadesDisponibles();
+  }, []);
 
-      // Estado para mensajes de éxito o error
-        const [mensaje, setMensaje] = useState('');
-        const [tipoMensaje, setTipoMensaje] = useState(''); // 'success' o 'error'
-
-    useEffect(() => {
-        const cargarActividadesDisponibles = async () => {
-            try {
-                const response = await axios.get('http://127.0.0.1:5000/api/actividades');
-                if (response.data.status === 'success') setActividadesDisponibles(response.data.actividades);
-            } catch {
-                console.error("Error al cargar disciplinas");
-            }
-        };
-        cargarActividadesDisponibles();
-    }, []);
-    
-    const mostrarClases = async (actividad) => {
-        try {
-            const hoy = new Date().toISOString().split('T')[0];
-            const ahora = new Date();
-            const finMes = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).toISOString().split('T')[0];
-            const response = await axios.get(`http://127.0.0.1:5000/api/turnos/clases?desde=${hoy}&hasta=${finMes}&actividad_id=${actividad.id}`);
-            if (response.data.status === 'success') setClases(response.data.clases);
-        } catch(error) {
-            console.error("Error al mostrar las clases", error.response?.data || error.message);
-        }
+  const mostrarClases = async (actividad) => {
+    try {
+      const hoy = new Date().toISOString().split('T')[0];
+      const ahora = new Date();
+      const finMes = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).toISOString().split('T')[0];
+      const response = await axios.get(`http://127.0.0.1:5000/api/turnos/clases?desde=${hoy}&hasta=${finMes}&actividad_id=${actividad.id}`);
+      if (response.data.status === 'success') setClases(response.data.clases);
+    } catch (error) {
+      console.error("Error al mostrar las clases", error.response?.data || error.message);
     }
-    
-      return (
+  };
+
+  const handleSeleccionPago = (claseId, tipoPago) => {
+    setMensajePago('');
+    setPagosSeleccionados((prev) => {
+      if (prev[claseId] === tipoPago) {
+        const nuevo = { ...prev };
+        delete nuevo[claseId];
+        return nuevo;
+      }
+      return { ...prev, [claseId]: tipoPago };
+    });
+  };
+
+  const calcularTotal = () => {
+    const precio = actividadSeleccionada.precio_base || 0;
+    return Object.values(pagosSeleccionados).reduce((total, tipo) => {
+      return total + (tipo === 'senia' ? precio * 0.5 : precio);
+    }, 0);
+  };
+
+  const haySeleccion = Object.keys(pagosSeleccionados).length > 0;
+
+  const handleTarjetaChange = (e) => {
+    const { name, value } = e.target;
+    if (name === 'numero_tarjeta' || name === 'cvv') {
+      if (!/^\d*$/.test(value)) return;
+    }
+    setTarjeta((prev) => ({ ...prev, [name]: value }));
+    setErroresTarjeta((prev) => ({ ...prev, [name]: '' }));
+  };
+
+  const validarTarjeta = () => {
+    const errores = {};
+
+    if (!tarjeta.numero_tarjeta || !/^\d{16}$/.test(tarjeta.numero_tarjeta)) {
+      errores.numero_tarjeta = 'El número de tarjeta debe tener exactamente 16 dígitos numéricos';
+    }
+    if (!tarjeta.titular || tarjeta.titular.trim() === '') {
+      errores.titular = 'El nombre del titular es obligatorio';
+    }
+    if (!tarjeta.vencimiento || !/^\d{2}\/\d{2}$/.test(tarjeta.vencimiento)) {
+      errores.vencimiento = 'La fecha de vencimiento debe tener el formato MM/AA';
+    } else {
+      const [mes, anio] = tarjeta.vencimiento.split('/');
+      const mesNum = parseInt(mes);
+      const anioNum = parseInt(anio) + 2000;
+      const ahora = new Date();
+      if (mesNum < 1 || mesNum > 12) {
+        errores.vencimiento = 'El mes de vencimiento debe estar entre 01 y 12';
+      } else if (anioNum < ahora.getFullYear() || (anioNum === ahora.getFullYear() && mesNum < ahora.getMonth() + 1)) {
+        errores.vencimiento = 'La tarjeta está vencida';
+      }
+    }
+    if (!tarjeta.cvv || !/^\d{3}$/.test(tarjeta.cvv)) {
+      errores.cvv = 'El código de seguridad debe tener exactamente 3 dígitos';
+    }
+
+    return errores;
+  };
+
+  const handleConfirmarPago = async () => {
+    if (!haySeleccion) return;
+
+    const errores = validarTarjeta();
+    if (Object.keys(errores).length > 0) {
+      setErroresTarjeta(errores);
+      return;
+    }
+
+    const clases = Object.entries(pagosSeleccionados).map(([claseId, tipoPago]) => ({
+      clase_id: parseInt(claseId),
+      tipo_pago: tipoPago
+    }));
+
+    setProcesando(true);
+    setMensajePago('');
+    try {
+      const response = await axios.post(
+        'http://127.0.0.1:5000/api/pagos/reservar-y-pagar',
+        {
+          clases,
+          numero_tarjeta: tarjeta.numero_tarjeta,
+          titular: tarjeta.titular,
+          vencimiento: tarjeta.vencimiento,
+          cvv: tarjeta.cvv
+        },
+        { headers: { 'X-User-Id': userSession.id } }
+      );
+
+      if (response.data.status === 'success') {
+        setMensajePago(response.data.message);
+        setTipoMensajePago('success');
+        setPagosSeleccionados({});
+        setTarjeta({ numero_tarjeta: '', titular: '', vencimiento: '', cvv: '' });
+        setMostrarFormulario(false);
+        mostrarClases(actividadSeleccionada);
+      }
+    } catch (error) {
+      setMensajePago(error.response?.data?.message || 'No se pudo realizar el pago, por favor intentá nuevamente.');
+      setTipoMensajePago('error');
+    } finally {
+      setProcesando(false);
+    }
+  };
+
+  const volverAActividades = () => {
+    setActividadSeleccionada({});
+    setClases([]);
+    setPagosSeleccionados({});
+    setMostrarFormulario(false);
+    setMensajePago('');
+    setErroresTarjeta({});
+    setTarjeta({ numero_tarjeta: '', titular: '', vencimiento: '', cvv: '' });
+  };
+
+  return (
     <div className="...">
-        <div className="flex justify-between items-center border-b pb-4 mb-6"> 
-        <h1 className="text-3xl font-bold text-[#212121]">Calendario</h1>
-        <button onClick={onVolver} className="bg-[#008080] hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition">Volver</button>
-        </div>
-        {actividadSeleccionada.id ? (
-          // mostrás el calendario
-          <div>
-            
-            {clasesDeActividadSeleccionada.map((clases) => (
-                        <div key={clases.id} className="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm flex justify-between items-center">
-                            <div>
-                                <p className="text-lg font-bold text-[#212121]">{clases.fecha}</p>
-                                <p className="text-gray-500 text-sm">{clases.horario_inicio} - {clases.horario_fin}</p>
-                                <p className="text-sm text-[#008080]">Cupos disponibles: {clases.cupo_disponible}</p>
-                            </div>
+      {actividadSeleccionada.id ? (
+        // Calendario de clases con pago
+        <div className="min-h-screen bg-[#F5F5F5] p-6">
+          <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md">
 
-                            <button className="bg-[#1E90FF] hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition">
-                                Reservar
-                            </button>
-                        </div>
-                    ))}
-
-          </div>
-
-        ) : (
-          // mostrás la lista de actividades
-          <div className="min-h-screen bg-[#F5F5F5] p-6">
-            <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md">
-              <div className="flex justify-between items-center border-b pb-4 mb-6">
-                <h1 className="text-3xl font-bold text-[#212121]">Actividades del usuario <span className="text-[#1E90FF]">{userSession?.nombre || 'Socio'}</span>! 👋</h1>
-                    
+            <div className="flex justify-between items-center border-b pb-4 mb-6">
+              <h1 className="text-3xl font-bold text-[#212121]">
+                {actividadSeleccionada.nombre} —{' '}
+                <span className="text-[#1E90FF]">Clases disponibles</span>
+              </h1>
               <button
-            onClick={onVolver}
-            className="bg-[#008080] hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition"
-          >
-            Volver
-          </button>
+                onClick={volverAActividades}
+                className="bg-[#008080] hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition"
+              >
+                Volver
+              </button>
+            </div>
+
+            <p className="text-gray-600 mb-6">
+              Seleccioná una o varias clases y elegí si querés pagar la seña (50%) o el total.
+            </p>
+
+            {mensajePago && (
+              <div
+                className="rounded p-4 mb-4 text-center font-medium border"
+                style={
+                  tipoMensajePago === 'success'
+                    ? { backgroundColor: '#32CD32', borderColor: '#32CD32', color: 'white' }
+                    : { backgroundColor: '#fee2e2', borderColor: '#fca5a5', color: '#991b1b' }
+                }
+              >
+                {mensajePago}
               </div>
-                    {actividadesDisponibles.map((actividad) => (
-                        <div key={actividad.id} className="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm flex justify-between items-center">
-                            <div>
-                                <h3 className="text-lg font-bold text-[#212121]">{actividad.nombre}</h3>
-                                <p className="text-gray-500 text-sm">{actividad.descripcion}</p>
-                            </div>
-                            <button
-                                onClick={() => {setActividadSeleccionada(actividad);
-                                                 mostrarClases(actividad)}}
-                                className="bg-[#1E90FF] hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition"
-                            >
-                                Ver Horarios
-                            </button>
-                        </div>
-                    ))}
+            )}
+
+            {clasesDeActividadSeleccionada.length === 0 && (
+              <div className="bg-[#F5F5F5] border border-gray-300 text-[#212121] rounded p-4 text-center">
+                No hay clases disponibles para esta actividad.
               </div>
+            )}
+
+            <div className="space-y-4">
+              {clasesDeActividadSeleccionada.map((clase) => (
+                <div key={clase.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition">
+                  <div className="flex justify-between items-start flex-wrap gap-4">
+                    <div>
+                      <p className="text-lg font-bold text-[#212121]">{clase.fecha}</p>
+                      <p className="text-gray-500 text-sm">{clase.horario_inicio} - {clase.horario_fin}</p>
+                      <p className="text-sm text-[#008080]">Cupos disponibles: {clase.cupo_disponible}</p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Precio: <span className="font-medium">${actividadSeleccionada.precio_base?.toLocaleString('es-AR')}</span>
+                      </p>
+                    </div>
+
+                    {clase.cupo_disponible > 0 ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSeleccionPago(clase.id, 'senia')}
+                          className={`py-2 px-4 rounded font-medium border transition ${
+                            pagosSeleccionados[clase.id] === 'senia'
+                              ? 'bg-yellow-400 border-yellow-500 text-white'
+                              : 'bg-white border-yellow-400 text-yellow-600 hover:bg-yellow-50'
+                          }`}
+                        >
+                          Pagar seña (50%)<br />
+                          <span className="text-sm">${(actividadSeleccionada.precio_base * 0.5).toLocaleString('es-AR')}</span>
+                        </button>
+                        <button
+                          onClick={() => handleSeleccionPago(clase.id, 'total')}
+                          className={`py-2 px-4 rounded font-medium border transition ${
+                            pagosSeleccionados[clase.id] === 'total'
+                              ? 'bg-[#1E90FF] border-blue-600 text-white'
+                              : 'bg-white border-[#1E90FF] text-[#1E90FF] hover:bg-blue-50'
+                          }`}
+                        >
+                          Pagar total (100%)<br />
+                          <span className="text-sm">${actividadSeleccionada.precio_base?.toLocaleString('es-AR')}</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 font-medium">Sin cupos</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {haySeleccion && (
+              <div className="border-t pt-4 mt-4">
+                <div className="flex justify-between items-center mb-4">
+                  <p className="text-lg font-bold text-[#212121]">
+                    Total a pagar:{' '}
+                    <span className="text-[#1E90FF]">
+                      ${calcularTotal().toLocaleString('es-AR')}
+                    </span>
+                  </p>
+                  {!mostrarFormulario && (
+                    <button
+                      onClick={() => { setMostrarFormulario(true); setMensajePago(''); }}
+                      className="bg-[#1E90FF] hover:bg-[#00CED1] text-white font-bold py-3 px-8 rounded transition"
+                    >
+                      Ingresar datos de tarjeta
+                    </button>
+                  )}
+                </div>
+
+                {mostrarFormulario && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mt-4">
+                    <h2 className="text-lg font-bold text-[#212121] mb-4">💳 Datos de la tarjeta</h2>
+
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Número de tarjeta</label>
+                      <input
+                        type="text"
+                        name="numero_tarjeta"
+                        value={tarjeta.numero_tarjeta}
+                        onChange={handleTarjetaChange}
+                        placeholder="1234567890123456"
+                        maxLength={16}
+                        className={`w-full border rounded px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1E90FF] ${
+                          erroresTarjeta.numero_tarjeta ? 'border-red-400' : 'border-gray-300'
+                        }`}
+                      />
+                      {erroresTarjeta.numero_tarjeta && (
+                        <p className="text-red-500 text-sm mt-1">{erroresTarjeta.numero_tarjeta}</p>
+                      )}
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nombre y apellido del titular</label>
+                      <input
+                        type="text"
+                        name="titular"
+                        value={tarjeta.titular}
+                        onChange={handleTarjetaChange}
+                        placeholder="Juan Pérez"
+                        className={`w-full border rounded px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1E90FF] ${
+                          erroresTarjeta.titular ? 'border-red-400' : 'border-gray-300'
+                        }`}
+                      />
+                      {erroresTarjeta.titular && (
+                        <p className="text-red-500 text-sm mt-1">{erroresTarjeta.titular}</p>
+                      )}
+                    </div>
+
+                    <div className="flex gap-4 mb-6">
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Vencimiento (MM/AA)</label>
+                        <input
+                          type="text"
+                          name="vencimiento"
+                          value={tarjeta.vencimiento}
+                          onChange={handleTarjetaChange}
+                          placeholder="12/27"
+                          maxLength={5}
+                          className={`w-full border rounded px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1E90FF] ${
+                            erroresTarjeta.vencimiento ? 'border-red-400' : 'border-gray-300'
+                          }`}
+                        />
+                        {erroresTarjeta.vencimiento && (
+                          <p className="text-red-500 text-sm mt-1">{erroresTarjeta.vencimiento}</p>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Código de seguridad (CVV)</label>
+                        <input
+                          type="text"
+                          name="cvv"
+                          value={tarjeta.cvv}
+                          onChange={handleTarjetaChange}
+                          placeholder="123"
+                          maxLength={3}
+                          className={`w-full border rounded px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1E90FF] ${
+                            erroresTarjeta.cvv ? 'border-red-400' : 'border-gray-300'
+                          }`}
+                        />
+                        {erroresTarjeta.cvv && (
+                          <p className="text-red-500 text-sm mt-1">{erroresTarjeta.cvv}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                      <button
+                        onClick={() => {
+                          setMostrarFormulario(false);
+                          setErroresTarjeta({});
+                          setTarjeta({ numero_tarjeta: '', titular: '', vencimiento: '', cvv: '' });
+                        }}
+                        className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded transition"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={handleConfirmarPago}
+                        disabled={procesando}
+                        className="flex-1 bg-[#1E90FF] hover:bg-[#00CED1] text-white font-bold py-3 px-8 rounded transition disabled:opacity-50"
+                      >
+                        {procesando ? 'Procesando...' : 'Confirmar pago'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
-        )}
+        </div>
+
+      ) : (
+        // Lista de actividades
+        <div className="min-h-screen bg-[#F5F5F5] p-6">
+          <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md">
+            <div className="flex justify-between items-center border-b pb-4 mb-6">
+              <h1 className="text-3xl font-bold text-[#212121]">
+                Actividades del usuario <span className="text-[#1E90FF]">{userSession?.nombre || 'Socio'}</span>! 👋
+              </h1>
+              <button
+                onClick={onVolver}
+                className="bg-[#008080] hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition"
+              >
+                Volver
+              </button>
+            </div>
+
+            {mensaje && (
+              <div
+                className="rounded p-4 mb-4 text-center font-medium border"
+                style={
+                  tipoMensaje === 'success'
+                    ? { backgroundColor: '#32CD32', borderColor: '#32CD32', color: 'white' }
+                    : { backgroundColor: '#fee2e2', borderColor: '#fca5a5', color: '#991b1b' }
+                }
+              >
+                {mensaje}
+              </div>
+            )}
+
+            {actividadesDisponibles.map((actividad) => (
+              <div key={actividad.id} className="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-bold text-[#212121]">{actividad.nombre}</h3>
+                  <p className="text-gray-500 text-sm">{actividad.descripcion}</p>
+                </div>
+                <button
+                  onClick={() => { setActividadSeleccionada(actividad); mostrarClases(actividad); }}
+                  className="bg-[#1E90FF] hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition"
+                >
+                  Ver Horarios
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
-    );
-}
+  );
+};
 
 export default MostrarActividades;

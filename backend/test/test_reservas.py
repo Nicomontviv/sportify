@@ -439,8 +439,8 @@ def test_ver_reservas_exitoso(client, usuario_casual, reserva_cancelable_mas_24h
     assert 'fecha' in data['reservas'][0]
     assert 'estado' in data['reservas'][0]
 
-def test_ver_reservas_no_muestra_canceladas(client, usuario_casual, reserva_cancelable_mas_24h):
-    """RN: las reservas canceladas no aparecen en el listado"""
+def test_ver_reservas_muestra_canceladas(client, usuario_casual, reserva_cancelable_mas_24h):
+    """Las reservas canceladas aparecen en el listado con cancelable=False"""
     reserva_cancelable_mas_24h.estado = 'cancelada_usuario'
     db.session.commit()
 
@@ -448,7 +448,9 @@ def test_ver_reservas_no_muestra_canceladas(client, usuario_casual, reserva_canc
     data = response.get_json()
 
     assert response.status_code == 200
-    assert data['reservas'] == []
+    assert len(data['reservas']) == 1
+    assert data['reservas'][0]['estado'] == 'cancelada_usuario'
+    assert data['reservas'][0]['cancelable'] == False
 
 def test_ver_reservas_usuario_sin_reservas(client, usuario_casual):
     """Escenario: usuario sin reservas → lista vacía"""

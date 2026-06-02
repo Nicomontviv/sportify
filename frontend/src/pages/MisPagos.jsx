@@ -24,23 +24,20 @@ const MisPagos = ({ userSession, onVolver }) => {
   const etiquetaTipo = {
     senia: 'Seña (50%)',
     pago_total: 'Pago total',
-    pago_parcial: 'Saldo restante'
+    pago_parcial: 'Seña (50%)'
   };
 
   // Colores para el tipo de pago usando la paleta oficial Sportify
-  // senia: amarillo (atención)
-  // pago_total: verde vibrante Sportify (#32CD32)
-  // pago_parcial: cian brillante Sportify (#00CED1)
   const colorTipo = {
     senia: 'text-yellow-800',
     pago_total: 'text-white',
-    pago_parcial: 'text-white'
+    pago_parcial: 'text-yellow-800'
   };
 
   const bgColorTipo = {
-    senia: '#ADFF2F',       // Verde Lima (Resaltado) — Sportify
-    pago_total: '#32CD32',  // Verde Vibrante Sportify
-    pago_parcial: '#00CED1' // Cian Brillante Sportify
+    senia: '#ADFF2F',       // Verde Lima — Sportify
+    pago_total: '#32CD32',  // Verde Vibrante — Sportify
+    pago_parcial: '#ADFF2F' // Verde Lima — igual que seña
   };
 
   // Etiquetas para el método de pago
@@ -88,12 +85,7 @@ const MisPagos = ({ userSession, onVolver }) => {
           <h1 className="text-3xl font-bold text-[#212121]">
             Mis <span className="text-[#1E90FF]">Pagos</span>
           </h1>
-          <button
-            onClick={onVolver}
-            className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition"
-          >
-            Volver
-          </button>
+         <button onClick={onVolver} className="bg-[#008080] hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition">Volver</button>
         </div>
 
         {/* Filtro por mes y año */}

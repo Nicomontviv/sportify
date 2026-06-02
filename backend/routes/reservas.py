@@ -125,36 +125,38 @@ def ver_reservas():
     if not user_id:
         return jsonify({"status": "error", "message": "Parámetro usuario_id requerido"}), 400
     try:
-        # Trae todas las reservas del usuario con sus relaciones en una sola query
         reservas = (
             Reserva.query
             .filter(Reserva.usuario_id == user_id)
             .options(joinedload(Reserva.clase).joinedload(Clase.turno).joinedload(Turno.actividad))
+            .join(Clase)
+            .order_by(Clase.fecha.desc())
             .all()
         )
 
         resultado = []
         for r in reservas:
             clase = r.clase
-            # Solo mostramos clases futuras
-            if clase.fecha > date.today():
-                turno = clase.turno
-                inicio_clase = datetime.combine(clase.fecha, turno.horario_inicio)
-                limite_cancelacion = inicio_clase - timedelta(hours=1)
-                # Solo mostramos reservas donde aún es posible cancelar
-                if datetime.now() < limite_cancelacion:
-                    if r.estado != 'cancelada_usuario' and r.estado != 'cancelada_centro':
-                        resultado.append({
-                            "id": r.id,
-                            "nombre_actividad" : turno.actividad.nombre,
-                            "dia_actividad" : turno.dia_semana,
-                            "horario_inicio" : str(turno.horario_inicio),
-                            "horario_fin" : str(turno.horario_fin),
-                            "fecha": str(clase.fecha),
-                            "estado" : r.estado
-                        })
+            turno = clase.turno
+            inicio_clase = datetime.combine(clase.fecha, turno.horario_inicio)
+            es_pasada = clase.fecha < date.today()
+            cancelable = (
+                r.estado not in ('cancelada_usuario', 'cancelada_centro')
+                and datetime.now() < inicio_clase - timedelta(hours=1)
+            )
+            resultado.append({
+                "id": r.id,
+                "nombre_actividad": turno.actividad.nombre,
+                "dia_actividad": turno.dia_semana,
+                "horario_inicio": str(turno.horario_inicio),
+                "horario_fin": str(turno.horario_fin),
+                "fecha": str(clase.fecha),
+                "estado": r.estado,
+                "es_pasada": es_pasada,
+                "cancelable": cancelable
+            })
 
         return jsonify({"status": "success", "reservas": resultado}), 200
-            
+
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

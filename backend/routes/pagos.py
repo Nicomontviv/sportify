@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
-from models import db, Reserva, Deposito, Empleado, Usuario, Administrador
+from models import db, Reserva, Deposito, Empleado, Usuario, Administrador, Clase, Turno, Actividad, Credito
 import re
 
 pagos_bp = Blueprint('pagos', __name__)
@@ -251,12 +251,13 @@ def pago_virtual():
                 }), 400
 
             # Calcular monto a cobrar según tipo de pago (RN1.6)
+            tenia_senia_previa = float(reserva.monto_pagado) > 0
             if tipo_pago == 'senia':
                 monto_a_cobrar = round(float(reserva.monto_total) * 0.5, 2)
                 tipo_deposito = 'senia'
             else:  # total
                 monto_a_cobrar = monto_pendiente
-                tipo_deposito = 'pago_total' if float(reserva.monto_pagado) == 0 else 'pago_parcial'
+                tipo_deposito = 'pago_total'
 
             # Registrar el depósito
             nuevo_deposito = Deposito(
@@ -294,7 +295,7 @@ def pago_virtual():
 
         # Mensajes según escenarios de la HU
         mensaje = "Pago de seña confirmado exitosamente" if len(pagos) == 1 and pagos[0]['tipo_pago'] == 'senia' \
-            else "Pago del saldo faltante confirmado exitosamente" if len(pagos) == 1 and tipo_deposito == 'pago_parcial' \
+            else "Pago del saldo faltante confirmado exitosamente" if len(pagos) == 1 and tenia_senia_previa \
             else "Pago total confirmado exitosamente" if len(pagos) == 1 \
             else "Pago confirmado exitosamente"
 
@@ -482,4 +483,138 @@ def mis_pagos():
         }), 200
 
     except Exception as e:
+        return jsonify({"status": "error", "message": f"Error en el servidor: {str(e)}"}), 500
+
+
+# ============================================================
+# RESERVAR Y PAGAR EN UN SOLO PASO (desde calendario de actividades)
+# El usuario selecciona clases del calendario, elige seña o total,
+# ingresa datos de tarjeta y se crea la reserva + depósito juntos.
+# ============================================================
+@pagos_bp.route('/reservar-y-pagar', methods=['POST'])
+def reservar_y_pagar():
+    user_id = request.headers.get('X-User-Id')
+    if not user_id:
+        return jsonify({"status": "error", "message": "No autorizado."}), 401
+
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        return jsonify({"status": "error", "message": "ID de usuario inválido."}), 400
+
+    data = request.get_json() or {}
+    clases = data.get('clases')  # Lista de { clase_id, tipo_pago: 'senia' | 'total' }
+    numero_tarjeta = data.get('numero_tarjeta')
+    titular = data.get('titular')
+    vencimiento = data.get('vencimiento')
+    cvv = data.get('cvv')
+
+    if not clases or not isinstance(clases, list) or len(clases) == 0:
+        return jsonify({"status": "error", "message": "Debe enviar al menos una clase."}), 400
+
+    error_tarjeta = _validar_tarjeta(numero_tarjeta, titular, vencimiento, cvv)
+    if error_tarjeta:
+        return jsonify({"status": "error", "message": error_tarjeta}), 400
+
+    usuario = db.session.get(Usuario, user_id)
+    if not usuario:
+        return jsonify({"status": "error", "message": "Usuario no encontrado."}), 404
+
+    resultados = []
+    total_cobrado = 0
+
+    try:
+        for item in clases:
+            clase_id = item.get('clase_id')
+            tipo_pago = item.get('tipo_pago')
+
+            if not clase_id or tipo_pago not in ('senia', 'total'):
+                return jsonify({
+                    "status": "error",
+                    "message": f"Datos inválidos para la clase {clase_id}. tipo_pago debe ser 'senia' o 'total'."
+                }), 400
+
+            clase = db.session.get(Clase, clase_id)
+            if not clase or not clase.activo:
+                return jsonify({"status": "error", "message": f"La clase {clase_id} no existe o no está disponible."}), 404
+
+            if clase.cupo_disponible <= 0:
+                return jsonify({"status": "error", "message": "La clase no posee cupos disponibles."}), 409
+
+            turno = db.session.get(Turno, clase.turno_id)
+            actividad = db.session.get(Actividad, turno.actividad_id)
+            monto_total = float(actividad.precio_base)
+
+            if usuario.is_abonado_actual:
+                ahora = datetime.now()
+                credito = Credito.query.filter_by(
+                    usuario_id=user_id, anio=ahora.year, mes=ahora.month
+                ).first()
+                if credito:
+                    monto_total = round(monto_total - monto_total * float(credito.monto_descuento) / 100, 2)
+                monto_a_cobrar = monto_total
+                monto_pagado_inicial = monto_total
+                tipo_deposito = 'pago_total'
+                estado = 'confirmada'
+            elif tipo_pago == 'senia':
+                monto_a_cobrar = round(monto_total * 0.5, 2)
+                monto_pagado_inicial = monto_a_cobrar
+                tipo_deposito = 'senia'
+                estado = 'pendiente_pago'
+            else:
+                monto_a_cobrar = monto_total
+                monto_pagado_inicial = monto_total
+                tipo_deposito = 'pago_total'
+                estado = 'confirmada'
+
+            nueva_reserva = Reserva(
+                clase_id=clase_id,
+                usuario_id=user_id,
+                metodo_pago='tarjeta_virtual',
+                monto_total=monto_total,
+                monto_pagado=monto_pagado_inicial,
+                estado=estado
+            )
+            db.session.add(nueva_reserva)
+            db.session.flush()
+
+            nuevo_deposito = Deposito(
+                reserva_id=nueva_reserva.id,
+                empleado_id=None,
+                monto=monto_a_cobrar,
+                fecha=datetime.now(),
+                tipo=tipo_deposito
+            )
+            db.session.add(nuevo_deposito)
+
+            clase.cupo_disponible -= 1
+            total_cobrado += monto_a_cobrar
+
+            resultados.append({
+                "reserva_id": nueva_reserva.id,
+                "clase_id": clase_id,
+                "tipo_pago": tipo_pago,
+                "monto_cobrado": monto_a_cobrar,
+                "monto_total": monto_total,
+                "estado": estado
+            })
+
+        db.session.commit()
+
+        if len(clases) == 1 and clases[0]['tipo_pago'] == 'senia':
+            mensaje = "Reserva confirmada. Seña pagada exitosamente."
+        elif len(clases) == 1:
+            mensaje = "Reserva confirmada. Pago total realizado exitosamente."
+        else:
+            mensaje = "Reservas confirmadas. Pago realizado exitosamente."
+
+        return jsonify({
+            "status": "success",
+            "message": mensaje,
+            "total_cobrado": total_cobrado,
+            "reservas": resultados
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
         return jsonify({"status": "error", "message": f"Error en el servidor: {str(e)}"}), 500
