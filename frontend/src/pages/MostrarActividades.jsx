@@ -5,6 +5,7 @@ const MostrarActividades = ({ userSession, onVolver }) => {
   const [actividadesDisponibles, setActividadesDisponibles] = useState([]);
   const [actividadSeleccionada, setActividadSeleccionada] = useState({});
   const [clasesDeActividadSeleccionada, setClases] = useState([]);
+  const [reservasActivasIds, setReservasActivasIds] = useState(new Set());
   const [mensaje, setMensaje] = useState('');
   const [tipoMensaje, setTipoMensaje] = useState('');
 
@@ -33,6 +34,22 @@ const MostrarActividades = ({ userSession, onVolver }) => {
     };
     cargarActividadesDisponibles();
   }, []);
+
+  const cargarMisReservas = async () => {
+    try {
+      const response = await axios.get(`http://127.0.0.1:5000/api/reservas?usuario_id=${userSession.id}`);
+      if (response.data.status === 'success') {
+        const ids = new Set(
+          response.data.reservas
+            .filter(r => r.estado !== 'cancelada_usuario' && r.estado !== 'cancelada_centro')
+            .map(r => r.clase_id)
+        );
+        setReservasActivasIds(ids);
+      }
+    } catch {
+      console.error("Error al cargar reservas del usuario");
+    }
+  };
 
   const mostrarClases = async (actividad) => {
     try {
@@ -65,6 +82,7 @@ const MostrarActividades = ({ userSession, onVolver }) => {
     }, 0);
   };
 
+  const clasesFiltradas = clasesDeActividadSeleccionada.filter(c => !reservasActivasIds.has(c.id));
   const haySeleccion = Object.keys(pagosSeleccionados).length > 0;
 
   const handleTarjetaChange = (e) => {
@@ -141,6 +159,7 @@ const MostrarActividades = ({ userSession, onVolver }) => {
         setTarjeta({ numero_tarjeta: '', titular: '', vencimiento: '', cvv: '' });
         setMostrarFormulario(false);
         mostrarClases(actividadSeleccionada);
+        cargarMisReservas();
       }
     } catch (error) {
       setMensajePago(error.response?.data?.message || 'No se pudo realizar el pago, por favor intentá nuevamente.');
@@ -161,9 +180,8 @@ const MostrarActividades = ({ userSession, onVolver }) => {
   };
 
   return (
-    <div className="...">
+    <div>
       {actividadSeleccionada.id ? (
-        // Calendario de clases con pago
         <div className="min-h-screen bg-[#F5F5F5] p-6">
           <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md">
 
@@ -197,14 +215,14 @@ const MostrarActividades = ({ userSession, onVolver }) => {
               </div>
             )}
 
-            {clasesDeActividadSeleccionada.length === 0 && (
+            {clasesFiltradas.length === 0 && (
               <div className="bg-[#F5F5F5] border border-gray-300 text-[#212121] rounded p-4 text-center">
                 No hay clases disponibles para esta actividad.
               </div>
             )}
 
             <div className="space-y-4">
-              {clasesDeActividadSeleccionada.map((clase) => (
+              {clasesFiltradas.map((clase) => (
                 <div key={clase.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition">
                   <div className="flex justify-between items-start flex-wrap gap-4">
                     <div>
@@ -372,7 +390,6 @@ const MostrarActividades = ({ userSession, onVolver }) => {
         </div>
 
       ) : (
-        // Lista de actividades
         <div className="min-h-screen bg-[#F5F5F5] p-6">
           <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md">
             <div className="flex justify-between items-center border-b pb-4 mb-6">
@@ -407,7 +424,7 @@ const MostrarActividades = ({ userSession, onVolver }) => {
                   <p className="text-gray-500 text-sm">{actividad.descripcion}</p>
                 </div>
                 <button
-                  onClick={() => { setActividadSeleccionada(actividad); mostrarClases(actividad); }}
+                  onClick={() => { setActividadSeleccionada(actividad); mostrarClases(actividad); cargarMisReservas(); }}
                   className="bg-[#1E90FF] hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition"
                 >
                   Ver Horarios

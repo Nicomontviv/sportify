@@ -30,14 +30,13 @@ const InicioEmpleado = ({ userSession, setIsLoggedIn }) => {
 
         <p className="text-gray-600 mb-6">Panel de empleado de <span className="font-semibold text-[#1E90FF]">Sportify</span>.</p>
 
-        {/* Botones de navegación del empleado */}
         <div className="grid grid-cols-2 gap-4">
           <button
             onClick={() => setVista('pago-presencial')}
             className="bg-[#1E90FF] hover:bg-[#00CED1] text-white font-bold py-4 px-6 rounded-lg transition text-left"
           >
-            <p className="text-lg">💵 Cobros en efectivo</p>
-            <p className="text-sm font-normal opacity-80">Registrá cobros en efectivo de usuarios</p>
+            <p className="text-lg">📋 Gestión de Reservas</p>
+            <p className="text-sm font-normal opacity-80">Creá reservas y registrá cobros de usuarios</p>
           </button>
         </div>
       </div>

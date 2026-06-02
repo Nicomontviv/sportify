@@ -618,3 +618,131 @@ def reservar_y_pagar():
     except Exception as e:
         db.session.rollback()
         return jsonify({"status": "error", "message": f"Error en el servidor: {str(e)}"}), 500
+
+
+# ============================================================
+# RESERVAR Y COBRAR PRESENCIALMENTE EN UN SOLO PASO (empleado)
+# El empleado busca al usuario, selecciona clases del calendario,
+# elige seña o total, y se crea la reserva + depósito presencial.
+# ============================================================
+@pagos_bp.route('/reservar-presencial', methods=['POST'])
+def reservar_presencial():
+    user_id = request.headers.get('X-User-Id')
+
+    if not _es_empleado(user_id):
+        return jsonify({"status": "error", "message": "No autorizado. Se requiere perfil empleado."}), 403
+
+    empleado = _get_empleado(user_id)
+
+    data = request.get_json() or {}
+    usuario_id = data.get('usuario_id')
+    clases = data.get('clases')  # Lista de { clase_id, tipo_pago: 'senia' | 'total' }
+
+    if not usuario_id:
+        return jsonify({"status": "error", "message": "Debe enviar el usuario_id."}), 400
+
+    if not clases or not isinstance(clases, list) or len(clases) == 0:
+        return jsonify({"status": "error", "message": "Debe enviar al menos una clase."}), 400
+
+    usuario = db.session.get(Usuario, usuario_id)
+    if not usuario:
+        return jsonify({"status": "error", "message": "Usuario no encontrado."}), 404
+
+    resultados = []
+    total_cobrado = 0
+
+    try:
+        for item in clases:
+            clase_id = item.get('clase_id')
+            tipo_pago = item.get('tipo_pago')
+
+            if not clase_id or tipo_pago not in ('senia', 'total'):
+                return jsonify({
+                    "status": "error",
+                    "message": f"Datos inválidos para la clase {clase_id}. tipo_pago debe ser 'senia' o 'total'."
+                }), 400
+
+            clase = db.session.get(Clase, clase_id)
+            if not clase or not clase.activo:
+                return jsonify({"status": "error", "message": f"La clase {clase_id} no existe o no está disponible."}), 404
+
+            if clase.cupo_disponible <= 0:
+                return jsonify({"status": "error", "message": "La clase no posee cupos disponibles."}), 409
+
+            turno = db.session.get(Turno, clase.turno_id)
+            actividad = db.session.get(Actividad, turno.actividad_id)
+            monto_total = float(actividad.precio_base)
+
+            if usuario.is_abonado_actual:
+                ahora = datetime.now()
+                credito = Credito.query.filter_by(
+                    usuario_id=usuario_id, anio=ahora.year, mes=ahora.month
+                ).first()
+                if credito:
+                    monto_total = round(monto_total - monto_total * float(credito.monto_descuento) / 100, 2)
+                monto_a_cobrar = monto_total
+                monto_pagado_inicial = monto_total
+                tipo_deposito = 'pago_total'
+                estado = 'confirmada'
+            elif tipo_pago == 'senia':
+                monto_a_cobrar = round(monto_total * 0.5, 2)
+                monto_pagado_inicial = monto_a_cobrar
+                tipo_deposito = 'senia'
+                estado = 'pendiente_pago'
+            else:
+                monto_a_cobrar = monto_total
+                monto_pagado_inicial = monto_total
+                tipo_deposito = 'pago_total'
+                estado = 'confirmada'
+
+            nueva_reserva = Reserva(
+                clase_id=clase_id,
+                usuario_id=usuario_id,
+                metodo_pago='efectivo',
+                monto_total=monto_total,
+                monto_pagado=monto_pagado_inicial,
+                estado=estado
+            )
+            db.session.add(nueva_reserva)
+            db.session.flush()
+
+            nuevo_deposito = Deposito(
+                reserva_id=nueva_reserva.id,
+                empleado_id=empleado.id,
+                monto=monto_a_cobrar,
+                fecha=datetime.now(),
+                tipo=tipo_deposito
+            )
+            db.session.add(nuevo_deposito)
+
+            clase.cupo_disponible -= 1
+            total_cobrado += monto_a_cobrar
+
+            resultados.append({
+                "reserva_id": nueva_reserva.id,
+                "clase_id": clase_id,
+                "tipo_pago": tipo_pago,
+                "monto_cobrado": monto_a_cobrar,
+                "monto_total": monto_total,
+                "estado": estado
+            })
+
+        db.session.commit()
+
+        if len(clases) == 1 and clases[0]['tipo_pago'] == 'senia':
+            mensaje = "Reserva creada. Seña registrada exitosamente."
+        elif len(clases) == 1:
+            mensaje = "Reserva creada. Pago total registrado exitosamente."
+        else:
+            mensaje = "Reservas creadas. Cobro registrado exitosamente."
+
+        return jsonify({
+            "status": "success",
+            "message": mensaje,
+            "total_cobrado": total_cobrado,
+            "reservas": resultados
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": f"Error en el servidor: {str(e)}"}), 500
