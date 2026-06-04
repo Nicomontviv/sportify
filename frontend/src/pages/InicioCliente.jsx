@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import MisPagos from './MisPagos';
-import PagoVirtual from './PagoVirtual';
 import MostrarActividades from './MostrarActividades';
+import MisReservas from './MisReservas';
 
 const InicioCliente = ({ userSession, setIsLoggedIn }) => {
   // Estado para controlar qué vista mostrar (agregado para pagos)
@@ -12,14 +12,14 @@ const InicioCliente = ({ userSession, setIsLoggedIn }) => {
     return <MisPagos userSession={userSession} onVolver={() => setVista('inicio')} />;
   }
 
-  // Si el usuario está en "Pagar Reservas", mostramos esa vista
-  if (vista === 'pago-virtual') {
-    return <PagoVirtual userSession={userSession} onVolver={() => setVista('inicio')} />;
-  }
-
   // Si el usuario está en "Actividades", mostramos esa vista
   if (vista === 'actividades') {
     return <MostrarActividades userSession={userSession} onVolver={() => setVista('inicio')} />;
+  }
+
+  // Si el usuario está en "Mis Reservas", mostramos esa vista
+  if (vista === 'mis-reservas') {
+    return <MisReservas userSession={userSession} onVolver={() => setVista('inicio')} />;
   }
 
   return (
@@ -46,14 +46,7 @@ const InicioCliente = ({ userSession, setIsLoggedIn }) => {
         <p className="text-gray-600 mb-6">Bienvenido al panel de socios de <span className="font-semibold text-[#1E90FF]">Sportify</span>. Desde acá vas a poder gestionar tus turnos.</p>
 
         {/* Botones de pagos */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <button
-            onClick={() => setVista('pago-virtual')}
-            className="bg-[#1E90FF] hover:bg-blue-600 text-white font-bold py-4 px-6 rounded-lg transition text-left"
-          >
-            <p className="text-lg">💳 Pagar Reservas</p>
-            <p className="text-sm font-normal opacity-80">Pagá tus reservas pendientes online</p>
-          </button>
+        <div className="grid grid-cols-2 gap-4 mb-6">
           <button
             onClick={() => setVista('mis-pagos')}
             className="bg-white hover:bg-gray-50 text-[#212121] font-bold py-4 px-6 rounded-lg transition text-left border border-gray-200"

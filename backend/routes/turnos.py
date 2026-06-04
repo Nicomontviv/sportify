@@ -444,6 +444,7 @@ def listar_clases():
     try:
         desde_str = request.args.get('desde')
         hasta_str = request.args.get('hasta')
+        actividad_id = request.args.get('actividad_id', type=int)
 
         if not desde_str or not hasta_str:
             return jsonify({"status": "error", "message": "Faltan parámetros 'desde' y 'hasta' (formato YYYY-MM-DD)."}), 400
@@ -454,11 +455,16 @@ def listar_clases():
         except ValueError:
             return jsonify({"status": "error", "message": "Formato de fecha inválido. Usar YYYY-MM-DD."}), 400
 
-        clases = Clase.query.filter(
+        query = Clase.query.join(Turno).filter(
             Clase.fecha >= desde,
             Clase.fecha <= hasta,
             Clase.activo == True
-        ).order_by(Clase.fecha).all()
+        )
+
+        if actividad_id:
+            query = query.filter(Turno.actividad_id == actividad_id)
+
+        clases = query.order_by(Clase.fecha).all()
 
         return jsonify({
             "status": "success",

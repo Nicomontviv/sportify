@@ -1,5 +1,5 @@
 import os
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from app import app, db
 from models import Usuario, Administrador, Actividad, Turno, Reserva, Clase, Empleado, Deposito
 from helpers.turnos_helper import generar_clases_para_mes
@@ -8,9 +8,9 @@ def cargar_datos_base():
     print("🧼 [1/4] Limpiando residuos de turnos anteriores...")
     with app.app_context():
         try:
-            db.session.query(Deposito).delete()  # NUEVO: limpiar depósitos antes que reservas por FK
+            db.session.query(Deposito).delete()
             db.session.query(Reserva).delete()
-            db.session.query(Clase).delete()  # NUEVO: limpiar clases antes que turnos por FK
+            db.session.query(Clase).delete()
             db.session.query(Turno).delete()
             db.session.commit()
             print("✔️ Tablas de turnos, clases, reservas y depósitos limpias.")
@@ -21,24 +21,17 @@ def cargar_datos_base():
     print("👤 [2/4] Forzando recreación limpia del Administrador...")
     with app.app_context():
         admin_email = "admin@sportify.com"
-        
-        # 1. Buscamos si ya existe el admin viejo con la contraseña rota
+
         admin_viejo = Usuario.query.filter_by(email=admin_email).first()
         if admin_viejo:
-            # BLINDAJE: Borramos primero TODAS las reservas asociadas a este usuario
             Reserva.query.filter_by(usuario_id=admin_viejo.id).delete()
-            
-            # Borramos su rol por la restricción de clave foránea
             Administrador.query.filter_by(usuario_id=admin_viejo.id).delete()
-            
-            # Ahora sí, la base de datos nos va a dejar borrar el usuario
             db.session.delete(admin_viejo)
             db.session.commit()
-            print("🧹 Viejo administrador (y sus reservas) eliminados para limpiar el texto plano.")
+            print("🧹 Viejo administrador eliminado.")
 
-        # 2. Creamos el administrador de cero con hash real garantizado
         from werkzeug.security import generate_password_hash
-        
+
         admin = Usuario(
             nombre="Nicolás",
             apellido="Montanari",
@@ -48,22 +41,19 @@ def cargar_datos_base():
             fecha_nacimiento=date(1995, 10, 10)
         )
         db.session.add(admin)
-        db.session.flush() # Obtenemos el ID dinámico antes del commit
-        
-        # 3. Le asignamos el perfil de Administrador (esto activa tu vista en React)
+        db.session.flush()
+
         perfil_admin = Administrador(usuario_id=admin.id, nivel_acceso="total")
         db.session.add(perfil_admin)
         db.session.commit()
-        print("✔️ ¡Usuario Administrador creado de cero con contraseña encriptada!")
+        print("✔️ Usuario Administrador creado: admin@sportify.com / admin123")
 
-    # NUEVO: Creamos el usuario Empleado de prueba para la demo de pagos presenciales
     print("👷 [2.5/4] Creando usuario Empleado de prueba...")
     with app.app_context():
         from werkzeug.security import generate_password_hash
 
         empleado_email = "empleado@sportify.com"
 
-        # Borramos el empleado viejo si existe
         empleado_viejo = Usuario.query.filter_by(email=empleado_email).first()
         if empleado_viejo:
             Empleado.query.filter_by(usuario_id=empleado_viejo.id).delete()
@@ -71,7 +61,6 @@ def cargar_datos_base():
             db.session.commit()
             print("🧹 Viejo empleado eliminado.")
 
-        # Creamos el usuario empleado
         empleado_usuario = Usuario(
             nombre="Mario",
             apellido="Gomez",
@@ -83,28 +72,25 @@ def cargar_datos_base():
         db.session.add(empleado_usuario)
         db.session.flush()
 
-        # Le asignamos el perfil de Empleado
         perfil_empleado = Empleado(usuario_id=empleado_usuario.id, legajo="EMP001", cargo="Recepcionista")
         db.session.add(perfil_empleado)
         db.session.commit()
         print("✔️ Usuario Empleado creado: empleado@sportify.com / empleado123!")
 
-    # NUEVO: Creamos un usuario casual de prueba para la demo de pagos
-    print("🙋 [2.7/4] Creando usuario Casual de prueba...")
+    # Juan Perez — usuario casual para HU1
+    print("🙋 [2.7/4] Creando usuario Casual Juan Perez (HU pagovirtual)...")
     with app.app_context():
         from werkzeug.security import generate_password_hash
 
         casual_email = "casual@sportify.com"
 
-        # Borramos el casual viejo si existe
         casual_viejo = Usuario.query.filter_by(email=casual_email).first()
         if casual_viejo:
             Reserva.query.filter_by(usuario_id=casual_viejo.id).delete()
             db.session.delete(casual_viejo)
             db.session.commit()
-            print("🧹 Viejo usuario casual eliminado.")
+            print("🧹 Viejo usuario Juan Perez eliminado.")
 
-        # Creamos el usuario casual
         casual_usuario = Usuario(
             nombre="Juan",
             apellido="Perez",
@@ -117,27 +103,86 @@ def cargar_datos_base():
         db.session.commit()
         print("✔️ Usuario Casual creado: casual@sportify.com / casual123!")
 
+    # Luis Gonzalez — usuario casual para HU pagopresencial
+    print("🙋 [2.8/4] Creando usuario Casual Luis Gonzalez (HU pagopresencial)...")
+    with app.app_context():
+        from werkzeug.security import generate_password_hash
+
+        luis_email = "luis@sportify.com"
+
+        luis_viejo = Usuario.query.filter_by(email=luis_email).first()
+        if luis_viejo:
+            Reserva.query.filter_by(usuario_id=luis_viejo.id).delete()
+            db.session.delete(luis_viejo)
+            db.session.commit()
+            print("🧹 Viejo usuario Luis Gonzalez eliminado.")
+
+        luis_usuario = Usuario(
+            nombre="Luis",
+            apellido="Gonzalez",
+            dni="88888888",
+            email=luis_email,
+            password_hash=generate_password_hash("luis123!"),
+            fecha_nacimiento=date(1993, 6, 10)
+        )
+        db.session.add(luis_usuario)
+        db.session.commit()
+        print("✔️ Usuario Casual creado: luis@sportify.com / luis123!")
+
+    # Gonzalo Lopez — usuario casual sin reservas
+    print("🙋 [2.9/4] Creando usuario Casual Gonzalo Lopez (sin reservas)...")
+    with app.app_context():
+        from werkzeug.security import generate_password_hash
+
+        gonzalo_email = "gonzalo@sportify.com"
+
+        gonzalo_viejo = Usuario.query.filter_by(email=gonzalo_email).first()
+        if not gonzalo_viejo:
+            gonzalo_viejo = Usuario.query.filter_by(dni="22555111").first()
+        if gonzalo_viejo:
+            Reserva.query.filter_by(usuario_id=gonzalo_viejo.id).delete()
+            db.session.delete(gonzalo_viejo)
+            db.session.commit()
+            print("🧹 Viejo usuario Gonzalo Lopez eliminado.")
+
+        gonzalo_usuario = Usuario(
+            nombre="Gonzalo",
+            apellido="Lopez",
+            dni="22555111",
+            email=gonzalo_email,
+            password_hash=generate_password_hash("gonzalo123!"),
+            fecha_nacimiento=date(1988, 11, 5)
+        )
+        db.session.add(gonzalo_usuario)
+        db.session.commit()
+        print("✔️ Usuario Casual creado: gonzalo@sportify.com / gonzalo123! (sin reservas)")
+
     print("🏋️ [3/4] Forzando activación de disciplinas base...")
     with app.app_context():
         actividades_iniciales = [
-            {"nombre": "Fútbol",  "descripcion": "Canchas de césped sintético para fútbol 5 y 11."},
-            {"nombre": "Básquet", "descripcion": "Cancha cubierta de piso flotante profesional."},
-            {"nombre": "Vóley",   "descripcion": "Turnos para vóley mixto e institucional."},
-            {"nombre": "Pádel",   "descripcion": "Canchas de blindex de última generación."}
+            {"nombre": "Fútbol",  "descripcion": "Canchas de césped sintético para fútbol 5 y 11.", "precio": 20000.0},
+            {"nombre": "Básquet", "descripcion": "Cancha cubierta de piso flotante profesional.",    "precio": 18000.0},
+            {"nombre": "Vóley",   "descripcion": "Turnos para vóley mixto e institucional.",         "precio": 18000.0},
+            {"nombre": "Pádel",   "descripcion": "Canchas de blindex de última generación.",         "precio": 16000.0}
         ]
 
         for act_data in actividades_iniciales:
-            act = Actividad.query.filter_by(nombre=act_data["nombre"]).first()
+            act = Actividad.query.filter(
+                db.func.lower(Actividad.nombre) == act_data["nombre"].lower()
+            ).first()
             if not act:
                 nueva_act = Actividad(
                     nombre=act_data["nombre"],
                     descripcion=act_data["descripcion"],
+                    precio_base=act_data["precio"],
                     activa=True
                 )
                 db.session.add(nueva_act)
             else:
+                act.nombre = act_data["nombre"]
                 act.activa = True
                 act.descripcion = act_data["descripcion"]
+                act.precio_base = act_data["precio"]
 
         db.session.commit()
         print("✔️ ¡ÉXITO! Todas las actividades quedaron guardadas en estado ACTIVO.")
@@ -145,94 +190,227 @@ def cargar_datos_base():
     print("📅 [4/4] Montando escenarios relacionales para la Demo...")
     with app.app_context():
         try:
-            voley_act  = Actividad.query.filter_by(nombre="Vóley").first()
-            padel_act  = Actividad.query.filter_by(nombre="Pádel").first()
-            admin_user = Usuario.query.filter_by(email="admin@sportify.com").first()
-            casual_user = Usuario.query.filter_by(email="casual@sportify.com").first()
+            futbol_act  = Actividad.query.filter_by(nombre="Fútbol").first()
+            voley_act   = Actividad.query.filter_by(nombre="Vóley").first()
+            padel_act   = Actividad.query.filter_by(nombre="Pádel").first()
+            basquet_act = Actividad.query.filter_by(nombre="Básquet").first()
 
-            # Escenario 1: Turno (plantilla) de Vóley los lunes 18-19hs, cupo 12.
-            turno_voley = Turno(
-                actividad_id=voley_act.id,
-                dia_semana='lunes',
+            casual_user  = Usuario.query.filter_by(email="casual@sportify.com").first()   # Juan Perez
+            luis_user    = Usuario.query.filter_by(email="luis@sportify.com").first()     # Luis Gonzalez
+
+            turno_futbol_viernes = Turno(
+                actividad_id=futbol_act.id,
+                dia_semana='viernes',
                 horario_inicio=time(18, 0),
                 horario_fin=time(19, 0),
                 cupo_maximo=12,
                 activo=True
             )
-            db.session.add(turno_voley)
+            db.session.add(turno_futbol_viernes)
 
-            # Escenario 2: Turno (plantilla) de Pádel los martes 19-20hs, cupo 4.
-            turno_padel = Turno(
-                actividad_id=padel_act.id,
+            turno_voley_martes = Turno(
+                actividad_id=voley_act.id,
                 dia_semana='martes',
+                horario_inicio=time(17, 0),
+                horario_fin=time(18, 0),
+                cupo_maximo=12,
+                activo=True
+            )
+            db.session.add(turno_voley_martes)
+
+            turno_padel_miercoles = Turno(
+                actividad_id=padel_act.id,
+                dia_semana='miercoles',
                 horario_inicio=time(19, 0),
                 horario_fin=time(20, 0),
                 cupo_maximo=4,
                 activo=True
             )
-            db.session.add(turno_padel)
-            db.session.flush()  # necesitamos los IDs para generar clases
+            db.session.add(turno_padel_miercoles)
 
-            # Generamos las clases (instancias con fecha) para junio 2026 a partir
-            # de cada turno. El helper crea una Clase por cada fecha del mes que
-            # coincida con el dia_semana del turno.
-            clases_voley = generar_clases_para_mes(turno_voley, 2026, 6)
-            clases_padel = generar_clases_para_mes(turno_padel, 2026, 6)
+            turno_basquet_jueves = Turno(
+                actividad_id=basquet_act.id,
+                dia_semana='jueves',
+                horario_inicio=time(14, 0),
+                horario_fin=time(15, 0),
+                cupo_maximo=12,
+                activo=True
+            )
+            db.session.add(turno_basquet_jueves)
 
-            for c in clases_voley + clases_padel:
+            turno_futbol_lunes = Turno(
+                actividad_id=futbol_act.id,
+                dia_semana='lunes',
+                horario_inicio=time(10, 0),
+                horario_fin=time(11, 0),
+                cupo_maximo=12,
+                activo=True
+            )
+            db.session.add(turno_futbol_lunes)
+
+            db.session.flush()
+
+            clases_futbol_viernes  = generar_clases_para_mes(turno_futbol_viernes, 2026, 6)
+            clases_voley_martes    = generar_clases_para_mes(turno_voley_martes, 2026, 6)
+            clases_padel_miercoles = generar_clases_para_mes(turno_padel_miercoles, 2026, 6)
+            clases_basquet_jueves  = generar_clases_para_mes(turno_basquet_jueves, 2026, 6)
+            clases_futbol_lunes    = generar_clases_para_mes(turno_futbol_lunes, 2026, 6)
+
+            for c in (clases_futbol_viernes + clases_voley_martes + clases_padel_miercoles +
+                      clases_basquet_jueves + clases_futbol_lunes):
                 db.session.add(c)
             db.session.flush()
 
-            # Simulamos que el admin ya reservó la primera clase de Pádel del mes,
-            # así dejamos un escenario con una reserva concreta para la demo.
-            primera_clase_padel = clases_padel[0] if clases_padel else None
-            if primera_clase_padel:
-                primera_clase_padel.cupo_disponible -= 1  # consumimos un lugar
-                reserva_padel = Reserva(
-                    clase_id=primera_clase_padel.id,
-                    usuario_id=admin_user.id,
-                    estado='confirmada',
+            if clases_futbol_viernes and casual_user:
+                clases_futbol_viernes[0].cupo_disponible -= 1
+                db.session.add(Reserva(
+                    clase_id=clases_futbol_viernes[0].id,
+                    usuario_id=casual_user.id,
+                    estado='pendiente_pago',
+                    metodo_pago='tarjeta_virtual',
+                    monto_total=20000.00,
+                    monto_pagado=10000.00
+                ))
+
+            if clases_voley_martes and casual_user:
+                clases_voley_martes[0].cupo_disponible -= 1
+                db.session.add(Reserva(
+                    clase_id=clases_voley_martes[0].id,
+                    usuario_id=casual_user.id,
+                    estado='pendiente_pago',
+                    metodo_pago='tarjeta_virtual',
+                    monto_total=18000.00,
+                    monto_pagado=9000.00
+                ))
+
+            if clases_padel_miercoles and casual_user:
+                clases_padel_miercoles[0].cupo_disponible -= 1
+                db.session.add(Reserva(
+                    clase_id=clases_padel_miercoles[0].id,
+                    usuario_id=casual_user.id,
+                    estado='pendiente_pago',
+                    metodo_pago='tarjeta_virtual',
+                    monto_total=16000.00,
+                    monto_pagado=8000.00
+                ))
+
+            if clases_basquet_jueves and casual_user:
+                clases_basquet_jueves[0].cupo_disponible -= 1
+                db.session.add(Reserva(
+                    clase_id=clases_basquet_jueves[0].id,
+                    usuario_id=casual_user.id,
+                    estado='pendiente_pago',
+                    metodo_pago='tarjeta_virtual',
+                    monto_total=18000.00,
+                    monto_pagado=9000.00
+                ))
+
+            if clases_futbol_lunes and casual_user:
+                clases_futbol_lunes[0].cupo_disponible -= 1
+                db.session.add(Reserva(
+                    clase_id=clases_futbol_lunes[0].id,
+                    usuario_id=casual_user.id,
+                    estado='pendiente_pago',
+                    metodo_pago='tarjeta_virtual',
+                    monto_total=20000.00,
+                    monto_pagado=10000.00
+                ))
+
+            # Escenario: reserva activa pero NO cancelable (clase comienza en 30 min)
+            # cancelable = now < inicio_clase - 1h = now < (now+30min-1h) = False
+            DIAS_ES = {0: 'lunes', 1: 'martes', 2: 'miercoles', 3: 'jueves', 4: 'viernes', 5: 'sabado', 6: 'domingo'}
+            ahora_seed = datetime.now()
+            inicio_nc = (ahora_seed + timedelta(minutes=30)).replace(second=0, microsecond=0)
+            fin_nc    = (ahora_seed + timedelta(minutes=90)).replace(second=0, microsecond=0)
+
+            turno_basquet_nc = Turno(
+                actividad_id=basquet_act.id,
+                dia_semana=DIAS_ES[ahora_seed.weekday()],
+                horario_inicio=inicio_nc.time(),
+                horario_fin=fin_nc.time(),
+                cupo_maximo=12,
+                activo=True
+            )
+            db.session.add(turno_basquet_nc)
+            db.session.flush()
+
+            clase_basquet_nc = Clase(
+                turno_id=turno_basquet_nc.id,
+                fecha=date.today(),
+                cupo_disponible=11,
+                activo=True
+            )
+            db.session.add(clase_basquet_nc)
+            db.session.flush()
+
+            if casual_user:
+                db.session.add(Reserva(
+                    clase_id=clase_basquet_nc.id,
+                    usuario_id=casual_user.id,
+                    estado='pendiente_pago',
+                    metodo_pago='tarjeta_virtual',
+                    monto_total=18000.00,
+                    monto_pagado=9000.00
+                ))
+
+            if clases_futbol_viernes and luis_user:
+                clases_futbol_viernes[0].cupo_disponible -= 1
+                db.session.add(Reserva(
+                    clase_id=clases_futbol_viernes[0].id,
+                    usuario_id=luis_user.id,
+                    estado='pendiente_pago',
+                    metodo_pago='efectivo',
+                    monto_total=20000.00,
+                    monto_pagado=10000.00
+                ))
+
+            if clases_voley_martes and luis_user:
+                clases_voley_martes[0].cupo_disponible -= 1
+                db.session.add(Reserva(
+                    clase_id=clases_voley_martes[0].id,
+                    usuario_id=luis_user.id,
+                    estado='pendiente_pago',
+                    metodo_pago='efectivo',
+                    monto_total=18000.00,
+                    monto_pagado=9000.00
+                ))
+
+            if clases_padel_miercoles and luis_user:
+                clases_padel_miercoles[0].cupo_disponible -= 1
+                db.session.add(Reserva(
+                    clase_id=clases_padel_miercoles[0].id,
+                    usuario_id=luis_user.id,
+                    estado='pendiente_pago',
                     metodo_pago='efectivo',
                     monto_total=16000.00,
-                    monto_pagado=5000.00
-                )
-                db.session.add(reserva_padel)
+                    monto_pagado=8000.00
+                ))
 
-            # NUEVO: Reserva 1 del usuario casual — Vóley (para demo de pagos)
-            primera_clase_voley = clases_voley[0] if clases_voley else None
-            if primera_clase_voley and casual_user:
-                primera_clase_voley.cupo_disponible -= 1  # consumimos un lugar
-                reserva_casual_voley = Reserva(
-                    clase_id=primera_clase_voley.id,
-                    usuario_id=casual_user.id,
+            if clases_basquet_jueves and luis_user:
+                clases_basquet_jueves[0].cupo_disponible -= 1
+                db.session.add(Reserva(
+                    clase_id=clases_basquet_jueves[0].id,
+                    usuario_id=luis_user.id,
                     estado='pendiente_pago',
-                    metodo_pago='tarjeta_virtual',
-                    monto_total=12000.00,
-                    monto_pagado=0.00  # no pagó nada todavía
-                )
-                db.session.add(reserva_casual_voley)
-
-            # NUEVO: Reserva 2 del usuario casual — Pádel (para demo escenario 3: pago múltiple)
-            segunda_clase_padel = clases_padel[1] if len(clases_padel) > 1 else None
-            if segunda_clase_padel and casual_user:
-                segunda_clase_padel.cupo_disponible -= 1  # consumimos un lugar
-                reserva_casual_padel = Reserva(
-                    clase_id=segunda_clase_padel.id,
-                    usuario_id=casual_user.id,
-                    estado='pendiente_pago',
-                    metodo_pago='tarjeta_virtual',
-                    monto_total=16000.00,
-                    monto_pagado=0.00  # no pagó nada todavía
-                )
-                db.session.add(reserva_casual_padel)
+                    metodo_pago='efectivo',
+                    monto_total=18000.00,
+                    monto_pagado=9000.00
+                ))
 
             db.session.commit()
-            print(f"✔️ Escenarios montados: 2 turnos (plantillas), "
-                  f"{len(clases_voley) + len(clases_padel)} clases generadas para junio.")
-            print("✔️ 2 reservas de prueba creadas para usuario casual (pendientes de pago).")
+            print("✔️ Escenarios cargados para HU pago virtual (Juan Perez) y HU pago presencial (Luis Gonzalez).")
+            print("✔️ Gonzalo Lopez creado sin reservas (escenario 10 HU pago virtual y escenario 5 HU pago presencial).")
+            print("")
+            print("👤 Usuarios de prueba:")
+            print("   Admin:    admin@sportify.com     / admin123       (DNI 12345678)")
+            print("   Empleado: empleado@sportify.com  / empleado123!   (DNI 55555555)")
+            print("   HUpagovirtual:      casual@sportify.com    / casual123!     (Juan Perez    DNI 99999999)")
+            print("   HUpagopresencial:      luis@sportify.com      / luis123!       (Luis Gonzalez DNI 88888888)")
+            print("   Sin reserva:  gonzalo@sportify.com   / gonzalo123!    (Gonzalo Lopez DNI 22555111)")
+
         except Exception as e:
             db.session.rollback()
-            print(f"⚠️ Nota: No se pudieron montar los turnos de prueba: {str(e)}")
+            print(f"⚠️ Nota: No se pudieron cargar los turnos de prueba: {str(e)}")
 
 if __name__ == "__main__":
     with app.app_context():

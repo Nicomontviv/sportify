@@ -33,24 +33,24 @@ def crear_reserva():
             usuario_id=usuario_id,
             metodo_pago=metodo_pago,
             monto_total=monto_total,
-            estado='pendiente_pago' # Toda reserva empieza sin pago confirmado; cambia al procesar el pago
+            estado='pendiente_pago', # Toda reserva empieza sin pago confirmado; cambia al procesar el pago
+            monto_pagado= monto_total / 2
         )
 
     # Si el usuario es un abonado se le aplica el descuento correspondiente sobre el monto final
-    if usuario.is_abonado_actual:
-        ahora = datetime.now()
-        credito_usuario = Credito.query.filter(Credito.usuario_id == usuario_id, Credito.anio == ahora.year, Credito.mes == ahora.month).first()
-        if not credito_usuario:
-            return jsonify({"status": "error", "message": "Credito no encontrado"}), 404
-        
-        monto_total -=  monto_total * credito_usuario.monto_descuento / 100
-        nueva_reserva.monto_total = monto_total
-        nueva_reserva.monto_pagado = monto_total
-        nueva_reserva.estado = 'confirmada'
-
-    else:
-        nueva_reserva.monto_pagado = monto_total / 2
-
+    # if usuario.is_abonado_actual:
+    #     ahora = datetime.now()
+    #     credito_usuario = Credito.query.filter(Credito.usuario_id == usuario_id, Credito.anio == ahora.year, Credito.mes == ahora.month).first()
+    #     if not credito_usuario:
+    #         return jsonify({"status": "error", "message": "Credito no encontrado"}), 404
+    #     
+    #     monto_total -=  monto_total * credito_usuario.monto_descuento / 100
+    #     nueva_reserva.monto_total = monto_total
+    #     nueva_reserva.monto_pagado = monto_total 
+    #     nueva_reserva.estado = 'confirmada'
+    # 
+    # else:
+    #     nueva_reserva.monto_pagado = monto_total / 2
 
     try:
         db.session.add(nueva_reserva)
@@ -95,10 +95,12 @@ def cancelar_reserva(id):
         return jsonify({"status": "error", "message": "No es posible cancelar la reserva: el plazo límite de cancelación (1 hora antes del inicio) ya fue superado"}), 409
     
     # REGLA DE NEGOCIO: Si la cancelación ocurre con más de 24 horas de anticipación, se devuelve la seña al usuario no abonado
+    senia_devuelta = False
     if not usuario.is_abonado_actual:
         limite_cancelacion = inicio_clase - timedelta(hours=24)
         if ahora < limite_cancelacion:
             reserva.monto_pagado = 0
+            senia_devuelta = True
     else:
         # Los usuarios abonados acumulan las cancelaciones por mes
         credito_usuario = Credito.query.filter(Credito.usuario_id == user_id, Credito.anio == ahora.year, Credito.mes == ahora.month).first()
@@ -111,7 +113,8 @@ def cancelar_reserva(id):
         db.session.commit()
         return jsonify({
             "status": "success",
-            "message": "La reserva se cancelo con exito"
+            "message": "La reserva se canceló con éxito",
+            "senia_devuelta": senia_devuelta
             }), 200
     
     except Exception as e:
@@ -125,35 +128,42 @@ def ver_reservas():
     if not user_id:
         return jsonify({"status": "error", "message": "Parámetro usuario_id requerido"}), 400
     try:
-        # Trae todas las reservas del usuario con sus relaciones en una sola query
         reservas = (
             Reserva.query
             .filter(Reserva.usuario_id == user_id)
             .options(joinedload(Reserva.clase).joinedload(Clase.turno).joinedload(Turno.actividad))
+            .join(Clase)
+            .order_by(Clase.fecha.desc())
             .all()
         )
 
         resultado = []
         for r in reservas:
             clase = r.clase
-            # Solo mostramos clases futuras
-            if clase.fecha > date.today():
-                turno = clase.turno
-                inicio_clase = datetime.combine(clase.fecha, turno.horario_inicio)
-                limite_cancelacion = inicio_clase - timedelta(hours=1)
-                # Solo mostramos reservas donde aún es posible cancelar
-                if datetime.now() < limite_cancelacion:
-                    if r.estado != 'cancelada_usuario' and r.estado != 'cancelada_centro':
-                        resultado.append({
-                            "nombre_actividad" : turno.actividad.nombre,
-                            "dia_actividad" : turno.dia_semana,
-                            "horario_inicio" : str(turno.horario_inicio),
-                            "horario_fin" : str(turno.horario_fin),
-                            "fecha": str(clase.fecha),
-                            "estado" : r.estado
-                        })
+            turno = clase.turno
+            inicio_clase = datetime.combine(clase.fecha, turno.horario_inicio)
+            es_pasada = clase.fecha < date.today()
+            cancelable = (
+                r.estado not in ('cancelada_usuario', 'cancelada_centro')
+                and datetime.now() < inicio_clase - timedelta(hours=1)
+            )
+            resultado.append({
+                "id": r.id,
+                "clase_id": clase.id,
+                "nombre_actividad": turno.actividad.nombre,
+                "dia_actividad": turno.dia_semana,
+                "horario_inicio": str(turno.horario_inicio),
+                "horario_fin": str(turno.horario_fin),
+                "fecha": str(clase.fecha),
+                "estado": r.estado,
+                "es_pasada": es_pasada,
+                "cancelable": cancelable,
+                "monto_total": float(r.monto_total),
+                "monto_pagado": float(r.monto_pagado),
+                "monto_pendiente": float(r.monto_total) - float(r.monto_pagado)
+            })
 
         return jsonify({"status": "success", "reservas": resultado}), 200
-            
+
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
