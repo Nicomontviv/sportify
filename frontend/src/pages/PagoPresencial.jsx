@@ -21,6 +21,7 @@ const PagoPresencial = ({ userSession, onVolver }) => {
 
   // ── Reservas pendientes (cobro sobre reservas existentes) ─
   const [reservasPendientes, setReservasPendientes] = useState([]);
+  const [reservasConcluidas, setReservasConcluidas] = useState([]);
   const [pagosSeleccionados, setPagosSeleccionados] = useState({});
   const [procesando, setProcesando] = useState(false);
 
@@ -59,11 +60,15 @@ const PagoPresencial = ({ userSession, onVolver }) => {
 
   const cargarReservasPendientes = async (usuarioId) => {
     try {
-      const response = await axios.get('http://127.0.0.1:5000/api/pagos/reservas-pendientes', {
-        headers: { 'X-User-Id': usuarioId }
-      });
+      const response = await axios.get(`http://127.0.0.1:5000/api/reservas?usuario_id=${usuarioId}`);
       if (response.data.status === 'success') {
-        setReservasPendientes(response.data.reservas);
+        const todas = response.data.reservas;
+        setReservasPendientes(
+          todas.filter(r => r.estado === 'pendiente_pago' && r.monto_pendiente > 0 && !r.es_pasada)
+        );
+        setReservasConcluidas(
+          todas.filter(r => r.es_pasada || r.estado === 'cancelada_usuario' || r.estado === 'cancelada_centro')
+        );
       }
     } catch {
       console.error("Error al cargar reservas pendientes");
@@ -74,11 +79,19 @@ const PagoPresencial = ({ userSession, onVolver }) => {
     if (!dni.trim()) {
       setMensaje('Ingresá un DNI para buscar.');
       setTipoMensaje('error');
+      setUsuarioEncontrado(null);
+      setReservasPendientes([]);
+      setReservasConcluidas([]);
+      setActividadSeleccionada(null);
       return;
     }
     if (!/^\d{8}$/.test(dni)) {
       setMensaje('El DNI debe tener exactamente 8 dígitos numéricos.');
       setTipoMensaje('error');
+      setUsuarioEncontrado(null);
+      setReservasPendientes([]);
+      setReservasConcluidas([]);
+      setActividadSeleccionada(null);
       return;
     }
 
@@ -89,6 +102,7 @@ const PagoPresencial = ({ userSession, onVolver }) => {
     setClasesDisponibles([]);
     setPagosNuevos({});
     setReservasPendientes([]);
+    setReservasConcluidas([]);
     setPagosSeleccionados({});
     setMensajeNuevo('');
 
@@ -201,7 +215,7 @@ const PagoPresencial = ({ userSession, onVolver }) => {
 
   const calcularTotalPendiente = () => {
     return reservasPendientes.reduce((total, reserva) => {
-      const tipo = pagosSeleccionados[reserva.reserva_id];
+      const tipo = pagosSeleccionados[reserva.id];
       if (!tipo) return total;
       if (tipo === 'senia') return total + reserva.monto_total * 0.5;
       return total + reserva.monto_pendiente;
@@ -423,19 +437,23 @@ const PagoPresencial = ({ userSession, onVolver }) => {
             </div>
 
             {/* ── Sección: Reservas Pendientes ── */}
-            {reservasPendientes.length > 0 && (
-              <div>
-                <h2 className="text-xl font-bold text-[#212121] mb-4 pb-2 border-b border-gray-200">
-                  Reservas <span className="text-yellow-600">Pendientes de Cobro</span>
-                </h2>
+            {(reservasPendientes.length > 0 || reservasConcluidas.length > 0) && (() => {
+              const renderTarjeta = (reserva, activa) => {
+                const esCancelada = reserva.estado === 'cancelada_usuario' || reserva.estado === 'cancelada_centro';
+                const chipLabel = activa ? 'Pendiente de pago' : esCancelada ? 'Cancelado' : 'Ausente';
+                const chipStyle = activa
+                  ? 'bg-yellow-100 text-yellow-700'
+                  : esCancelada
+                  ? 'bg-red-100 text-red-600'
+                  : 'bg-gray-100 text-gray-500';
 
-                <div className="space-y-4">
-                  {reservasPendientes.map((reserva) => (
-                    <div key={reserva.reserva_id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition">
-                      <div className="flex justify-between items-start flex-wrap gap-4">
-                        <div>
-                          <p className="text-lg font-semibold text-[#212121]">{reserva.actividad}</p>
-                          <p className="text-sm text-gray-500">{reserva.fecha} — {reserva.horario_inicio}hs a {reserva.horario_fin}hs</p>
+                return (
+                  <div key={reserva.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition">
+                    <div className="flex justify-between items-start flex-wrap gap-4">
+                      <div>
+                        <p className="text-lg font-semibold text-[#212121]">{reserva.nombre_actividad}</p>
+                        <p className="text-sm text-gray-500">{reserva.fecha} — {reserva.horario_inicio}hs a {reserva.horario_fin}hs</p>
+                        {activa && (
                           <p className="text-sm text-gray-500 mt-1">
                             Total: <span className="font-medium">${reserva.monto_total.toLocaleString('es-AR')}</span>
                             {reserva.monto_pagado > 0 && (
@@ -444,13 +462,19 @@ const PagoPresencial = ({ userSession, onVolver }) => {
                               </span>
                             )}
                           </p>
-                        </div>
+                        )}
+                        <span className={`text-xs font-semibold px-2 py-1 rounded-full mt-2 inline-block ${chipStyle}`}>
+                          {chipLabel}
+                        </span>
+                      </div>
+
+                      {activa && (
                         <div className="flex gap-2">
                           {reserva.monto_pagado === 0 && (
                             <button
-                              onClick={() => handleSeleccionPago(reserva.reserva_id, 'senia')}
+                              onClick={() => handleSeleccionPago(reserva.id, 'senia')}
                               className={`py-2 px-4 rounded font-medium border transition ${
-                                pagosSeleccionados[reserva.reserva_id] === 'senia'
+                                pagosSeleccionados[reserva.id] === 'senia'
                                   ? 'bg-yellow-400 border-yellow-500 text-white'
                                   : 'bg-white border-yellow-400 text-yellow-600 hover:bg-yellow-50'
                               }`}
@@ -459,39 +483,66 @@ const PagoPresencial = ({ userSession, onVolver }) => {
                               <span className="text-sm">${(reserva.monto_total * 0.5).toLocaleString('es-AR')}</span>
                             </button>
                           )}
-                          <button
-                            onClick={() => handleSeleccionPago(reserva.reserva_id, 'total')}
-                            className={`py-2 px-4 rounded font-medium border transition ${
-                              pagosSeleccionados[reserva.reserva_id] === 'total'
-                                ? 'bg-[#1E90FF] border-blue-600 text-white'
-                                : 'bg-white border-[#1E90FF] text-[#1E90FF] hover:bg-blue-50'
-                            }`}
-                          >
-                            {reserva.monto_pagado > 0 ? 'Cobrar saldo faltante' : 'Cobrar total (100%)'}<br />
-                            <span className="text-sm">${reserva.monto_pendiente.toLocaleString('es-AR')}</span>
-                          </button>
+                          {reserva.monto_pagado > 0 && (
+                            <button
+                              onClick={() => handleSeleccionPago(reserva.id, 'total')}
+                              className={`py-2 px-4 rounded font-medium border transition ${
+                                pagosSeleccionados[reserva.id] === 'total'
+                                  ? 'bg-[#1E90FF] border-blue-600 text-white'
+                                  : 'bg-white border-[#1E90FF] text-[#1E90FF] hover:bg-blue-50'
+                              }`}
+                            >
+                              Cobrar saldo faltante<br />
+                              <span className="text-sm">${reserva.monto_pendiente.toLocaleString('es-AR')}</span>
+                            </button>
+                          )}
                         </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              };
+
+              return (
+                <>
+                  {reservasPendientes.length > 0 && (
+                    <div>
+                      <h2 className="text-xl font-bold text-[#212121] mb-4 pb-2 border-b border-gray-200">
+                        Reservas <span className="text-yellow-600">Pendientes de Cobro</span>
+                      </h2>
+                      <div className="space-y-4">
+                        {reservasPendientes.map(r => renderTarjeta(r, true))}
+                        {haySeleccionPendiente && (
+                          <div className="border-t pt-4 mt-4 flex justify-between items-center">
+                            <p className="text-lg font-bold text-[#212121]">
+                              Total a cobrar: <span className="text-[#1E90FF]">${calcularTotalPendiente().toLocaleString('es-AR')}</span>
+                            </p>
+                            <button
+                              onClick={handleConfirmarPago}
+                              disabled={procesando}
+                              className="bg-[#1E90FF] hover:bg-[#00CED1] text-white font-bold py-3 px-8 rounded transition disabled:opacity-50"
+                            >
+                              {procesando ? 'Registrando...' : 'Confirmar cobro'}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  ))}
+                  )}
 
-                  {haySeleccionPendiente && (
-                    <div className="border-t pt-4 mt-4 flex justify-between items-center">
-                      <p className="text-lg font-bold text-[#212121]">
-                        Total a cobrar: <span className="text-[#1E90FF]">${calcularTotalPendiente().toLocaleString('es-AR')}</span>
-                      </p>
-                      <button
-                        onClick={handleConfirmarPago}
-                        disabled={procesando}
-                        className="bg-[#1E90FF] hover:bg-[#00CED1] text-white font-bold py-3 px-8 rounded transition disabled:opacity-50"
-                      >
-                        {procesando ? 'Registrando...' : 'Confirmar cobro'}
-                      </button>
+                  {reservasConcluidas.length > 0 && (
+                    <div className="mt-8">
+                      <h2 className="text-xl font-bold text-[#212121] mb-4 pb-2 border-b border-gray-200">
+                        Reservas <span className="text-gray-500">canceladas o concluidas</span>
+                      </h2>
+                      <div className="space-y-3 opacity-75">
+                        {reservasConcluidas.map(r => renderTarjeta(r, false))}
+                      </div>
                     </div>
                   )}
-                </div>
-              </div>
-            )}
+                </>
+              );
+            })()}
           </>
         )}
       </div>

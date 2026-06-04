@@ -1,5 +1,5 @@
 import os
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from app import app, db
 from models import Usuario, Administrador, Actividad, Turno, Reserva, Clase, Empleado, Deposito
 from helpers.turnos_helper import generar_clases_para_mes
@@ -167,7 +167,9 @@ def cargar_datos_base():
         ]
 
         for act_data in actividades_iniciales:
-            act = Actividad.query.filter_by(nombre=act_data["nombre"]).first()
+            act = Actividad.query.filter(
+                db.func.lower(Actividad.nombre) == act_data["nombre"].lower()
+            ).first()
             if not act:
                 nueva_act = Actividad(
                     nombre=act_data["nombre"],
@@ -177,6 +179,7 @@ def cargar_datos_base():
                 )
                 db.session.add(nueva_act)
             else:
+                act.nombre = act_data["nombre"]
                 act.activa = True
                 act.descripcion = act_data["descripcion"]
                 act.precio_base = act_data["precio"]
@@ -266,7 +269,7 @@ def cargar_datos_base():
                     estado='pendiente_pago',
                     metodo_pago='tarjeta_virtual',
                     monto_total=20000.00,
-                    monto_pagado=0.00
+                    monto_pagado=10000.00
                 ))
 
             if clases_voley_martes and casual_user:
@@ -277,7 +280,7 @@ def cargar_datos_base():
                     estado='pendiente_pago',
                     metodo_pago='tarjeta_virtual',
                     monto_total=18000.00,
-                    monto_pagado=0.00
+                    monto_pagado=9000.00
                 ))
 
             if clases_padel_miercoles and casual_user:
@@ -288,7 +291,7 @@ def cargar_datos_base():
                     estado='pendiente_pago',
                     metodo_pago='tarjeta_virtual',
                     monto_total=16000.00,
-                    monto_pagado=0.00
+                    monto_pagado=8000.00
                 ))
 
             if clases_basquet_jueves and casual_user:
@@ -299,7 +302,7 @@ def cargar_datos_base():
                     estado='pendiente_pago',
                     metodo_pago='tarjeta_virtual',
                     monto_total=18000.00,
-                    monto_pagado=0.00
+                    monto_pagado=9000.00
                 ))
 
             if clases_futbol_lunes and casual_user:
@@ -310,7 +313,44 @@ def cargar_datos_base():
                     estado='pendiente_pago',
                     metodo_pago='tarjeta_virtual',
                     monto_total=20000.00,
-                    monto_pagado=0.00
+                    monto_pagado=10000.00
+                ))
+
+            # Escenario: reserva activa pero NO cancelable (clase comienza en 30 min)
+            # cancelable = now < inicio_clase - 1h = now < (now+30min-1h) = False
+            DIAS_ES = {0: 'lunes', 1: 'martes', 2: 'miercoles', 3: 'jueves', 4: 'viernes', 5: 'sabado', 6: 'domingo'}
+            ahora_seed = datetime.now()
+            inicio_nc = (ahora_seed + timedelta(minutes=30)).replace(second=0, microsecond=0)
+            fin_nc    = (ahora_seed + timedelta(minutes=90)).replace(second=0, microsecond=0)
+
+            turno_basquet_nc = Turno(
+                actividad_id=basquet_act.id,
+                dia_semana=DIAS_ES[ahora_seed.weekday()],
+                horario_inicio=inicio_nc.time(),
+                horario_fin=fin_nc.time(),
+                cupo_maximo=12,
+                activo=True
+            )
+            db.session.add(turno_basquet_nc)
+            db.session.flush()
+
+            clase_basquet_nc = Clase(
+                turno_id=turno_basquet_nc.id,
+                fecha=date.today(),
+                cupo_disponible=11,
+                activo=True
+            )
+            db.session.add(clase_basquet_nc)
+            db.session.flush()
+
+            if casual_user:
+                db.session.add(Reserva(
+                    clase_id=clase_basquet_nc.id,
+                    usuario_id=casual_user.id,
+                    estado='pendiente_pago',
+                    metodo_pago='tarjeta_virtual',
+                    monto_total=18000.00,
+                    monto_pagado=9000.00
                 ))
 
             if clases_futbol_viernes and luis_user:
@@ -321,7 +361,7 @@ def cargar_datos_base():
                     estado='pendiente_pago',
                     metodo_pago='efectivo',
                     monto_total=20000.00,
-                    monto_pagado=0.00
+                    monto_pagado=10000.00
                 ))
 
             if clases_voley_martes and luis_user:
@@ -332,7 +372,7 @@ def cargar_datos_base():
                     estado='pendiente_pago',
                     metodo_pago='efectivo',
                     monto_total=18000.00,
-                    monto_pagado=0.00
+                    monto_pagado=9000.00
                 ))
 
             if clases_padel_miercoles and luis_user:
@@ -343,7 +383,7 @@ def cargar_datos_base():
                     estado='pendiente_pago',
                     metodo_pago='efectivo',
                     monto_total=16000.00,
-                    monto_pagado=0.00
+                    monto_pagado=8000.00
                 ))
 
             if clases_basquet_jueves and luis_user:
@@ -354,7 +394,7 @@ def cargar_datos_base():
                     estado='pendiente_pago',
                     metodo_pago='efectivo',
                     monto_total=18000.00,
-                    monto_pagado=0.00
+                    monto_pagado=9000.00
                 ))
 
             db.session.commit()

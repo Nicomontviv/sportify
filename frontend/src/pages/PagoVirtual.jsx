@@ -20,11 +20,11 @@ const PagoVirtual = ({ userSession, onVolver }) => {
   const cargarReservasPendientes = async () => {
     setCargando(true);
     try {
-      const response = await axios.get('http://127.0.0.1:5000/api/pagos/reservas-pendientes', {
-        headers: { 'X-User-Id': userSession.id }
-      });
+      const response = await axios.get(`http://127.0.0.1:5000/api/reservas?usuario_id=${userSession.id}`);
       if (response.data.status === 'success') {
-        setReservas(response.data.reservas);
+        setReservas(
+          response.data.reservas.filter(r => r.estado === 'pendiente_pago' && r.monto_pendiente > 0)
+        );
       }
     } catch (error) {
       setMensaje(error.response?.data?.message || 'Error al cargar las reservas.');
@@ -52,7 +52,7 @@ const PagoVirtual = ({ userSession, onVolver }) => {
 
   const calcularTotal = () => {
     return reservas.reduce((total, reserva) => {
-      const tipo = pagosSeleccionados[reserva.reserva_id];
+      const tipo = pagosSeleccionados[reserva.id];
       if (!tipo) return total;
       if (tipo === 'senia') return total + reserva.monto_total * 0.5;
       return total + reserva.monto_pendiente;
@@ -194,11 +194,11 @@ const PagoVirtual = ({ userSession, onVolver }) => {
         {!cargando && reservas.length > 0 && (
           <div className="space-y-4">
             {reservas.map((reserva) => (
-              <div key={reserva.reserva_id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition">
+              <div key={reserva.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition">
                 <div className="flex justify-between items-start flex-wrap gap-4">
                   <div>
                     <p className="text-lg font-semibold text-[#212121]">
-                      {reserva.actividad}
+                      {reserva.nombre_actividad}
                     </p>
                     <p className="text-sm text-gray-500">
                       {reserva.fecha} — {reserva.horario_inicio}hs a {reserva.horario_fin}hs
@@ -216,9 +216,9 @@ const PagoVirtual = ({ userSession, onVolver }) => {
                   <div className="flex gap-2">
                     {reserva.monto_pagado === 0 && (
                       <button
-                        onClick={() => handleSeleccionPago(reserva.reserva_id, 'senia')}
+                        onClick={() => handleSeleccionPago(reserva.id, 'senia')}
                         className={`py-2 px-4 rounded font-medium border transition ${
-                          pagosSeleccionados[reserva.reserva_id] === 'senia'
+                          pagosSeleccionados[reserva.id] === 'senia'
                             ? 'bg-yellow-400 border-yellow-500 text-white'
                             : 'bg-white border-yellow-400 text-yellow-600 hover:bg-yellow-50'
                         }`}
@@ -228,9 +228,9 @@ const PagoVirtual = ({ userSession, onVolver }) => {
                       </button>
                     )}
                     <button
-                      onClick={() => handleSeleccionPago(reserva.reserva_id, 'total')}
+                      onClick={() => handleSeleccionPago(reserva.id, 'total')}
                       className={`py-2 px-4 rounded font-medium border transition ${
-                        pagosSeleccionados[reserva.reserva_id] === 'total'
+                        pagosSeleccionados[reserva.id] === 'total'
                           ? 'bg-[#1E90FF] border-blue-600 text-white'
                           : 'bg-white border-[#1E90FF] text-[#1E90FF] hover:bg-blue-50'
                       }`}

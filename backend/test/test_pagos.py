@@ -528,9 +528,7 @@ def test_pago_virtual_saldo_faltante(client, usuario_casual, reserva_futbol_vier
 
 def test_pago_virtual_sin_reservas(client, usuario_casual_sin_reservas):
     """Escenario 10: No hay reservas pendientes de pago - Gonzalo Lopez DNI 22555111"""
-    headers = {'X-User-Id': str(usuario_casual_sin_reservas.id)}
-
-    response = client.get('/api/pagos/reservas-pendientes', headers=headers)
+    response = client.get(f'/api/reservas?usuario_id={usuario_casual_sin_reservas.id}')
     data = response.get_json()
 
     assert response.status_code == 200

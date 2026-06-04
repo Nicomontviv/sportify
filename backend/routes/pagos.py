@@ -27,25 +27,6 @@ def _get_empleado(user_id):
         return None
     return Empleado.query.filter_by(usuario_id=user_id).first()
 
-def _reserva_a_dict(reserva):
-    """Convierte una reserva a diccionario con info de la clase."""
-    clase = reserva.clase
-    turno = clase.turno if clase else None
-    actividad = turno.actividad if turno else None
-    return {
-        "reserva_id": reserva.id,
-        "clase_id": reserva.clase_id,
-        "fecha": clase.fecha.strftime('%Y-%m-%d') if clase else None,
-        "actividad": actividad.nombre if actividad else None,
-        "horario_inicio": turno.horario_inicio.strftime('%H:%M') if turno else None,
-        "horario_fin": turno.horario_fin.strftime('%H:%M') if turno else None,
-        "monto_total": float(reserva.monto_total),
-        "monto_pagado": float(reserva.monto_pagado),
-        "monto_pendiente": float(reserva.monto_total) - float(reserva.monto_pagado),
-        "estado": reserva.estado,
-        "metodo_pago": reserva.metodo_pago
-    }
-
 def _deposito_a_dict(deposito):
     """Convierte un depósito a diccionario con info de la reserva."""
     reserva = deposito.reserva
@@ -113,38 +94,6 @@ def _validar_tarjeta(numero, titular, vencimiento, cvv):
         return "Pago denegado: su tarjeta se encuentra bloqueada o inhabilitada"
 
     return None  # Todo válido
-
-
-# ============================================================
-# ENDPOINT AUXILIAR — RESERVAS PENDIENTES DE PAGO DEL USUARIO
-# Devuelve las reservas del usuario que tienen saldo pendiente
-# ============================================================
-@pagos_bp.route('/reservas-pendientes', methods=['GET'])
-def reservas_pendientes():
-    user_id = request.headers.get('X-User-Id')
-    if not user_id:
-        return jsonify({"status": "error", "message": "No autorizado."}), 401
-
-    try:
-        user_id = int(user_id)
-    except (TypeError, ValueError):
-        return jsonify({"status": "error", "message": "ID de usuario inválido."}), 400
-
-    try:
-        # Buscar reservas del usuario con saldo pendiente
-        reservas = Reserva.query.filter(
-            Reserva.usuario_id == user_id,
-            Reserva.estado.in_(['pendiente_pago', 'confirmada']),
-            Reserva.monto_pagado < Reserva.monto_total
-        ).all()
-
-        return jsonify({
-            "status": "success",
-            "reservas": [_reserva_a_dict(r) for r in reservas]
-        }), 200
-
-    except Exception as e:
-        return jsonify({"status": "error", "message": f"Error en el servidor: {str(e)}"}), 500
 
 
 # ============================================================
@@ -449,10 +398,14 @@ def mis_pagos():
             raise ValueError
     except (TypeError, ValueError):
         return jsonify({"status": "error", "message": "Mes y año deben ser números válidos. Mes entre 1 y 12."}), 400
+    actividad_id = request.args.get('actividad_id')
 
     try:
         # Buscar todas las reservas del usuario
-        reservas = Reserva.query.filter_by(usuario_id=user_id).all()
+        query = Reserva.query.filter_by(usuario_id=user_id)
+        if actividad_id:
+            query = query.join(Clase).join(Turno).filter(Turno.actividad_id == int(actividad_id))     
+        reservas = query.all()
         reservas_ids = [r.id for r in reservas]
 
         if not reservas_ids:
