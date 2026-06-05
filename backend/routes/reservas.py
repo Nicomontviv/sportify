@@ -4,7 +4,7 @@ from sqlalchemy.orm import joinedload
 from datetime import date, datetime, timedelta
 
 reservas_bp = Blueprint('reservas', __name__)
-
+# Rutas de reservas
 @reservas_bp.route('', methods=['POST'])
 def crear_reserva():
     data = request.get_json()
