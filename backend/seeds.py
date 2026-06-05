@@ -3,7 +3,7 @@ from datetime import date, datetime, time, timedelta
 from app import app, db
 from models import Usuario, Administrador, Actividad, Turno, Reserva, Clase, Empleado, Deposito
 from helpers.turnos_helper import generar_clases_para_mes
-
+# Seeds para la demo - Junio 2026
 def cargar_datos_base():
     print("🧼 [1/4] Limpiando residuos de turnos anteriores...")
     with app.app_context():
