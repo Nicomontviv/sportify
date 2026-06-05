@@ -262,9 +262,9 @@ def cargar_datos_base():
             db.session.flush()
 
             if clases_futbol_viernes and casual_user:
-                clases_futbol_viernes[0].cupo_disponible -= 1
+                clases_futbol_viernes[1].cupo_disponible -= 1
                 db.session.add(Reserva(
-                    clase_id=clases_futbol_viernes[0].id,
+                    clase_id=clases_futbol_viernes[1].id,
                     usuario_id=casual_user.id,
                     estado='pendiente_pago',
                     metodo_pago='tarjeta_virtual',
@@ -273,9 +273,9 @@ def cargar_datos_base():
                 ))
 
             if clases_voley_martes and casual_user:
-                clases_voley_martes[0].cupo_disponible -= 1
+                clases_voley_martes[1].cupo_disponible -= 1
                 db.session.add(Reserva(
-                    clase_id=clases_voley_martes[0].id,
+                    clase_id=clases_voley_martes[1].id,
                     usuario_id=casual_user.id,
                     estado='pendiente_pago',
                     metodo_pago='tarjeta_virtual',
@@ -354,9 +354,9 @@ def cargar_datos_base():
                 ))
 
             if clases_futbol_viernes and luis_user:
-                clases_futbol_viernes[0].cupo_disponible -= 1
+                clases_futbol_viernes[1].cupo_disponible -= 1
                 db.session.add(Reserva(
-                    clase_id=clases_futbol_viernes[0].id,
+                    clase_id=clases_futbol_viernes[1].id,
                     usuario_id=luis_user.id,
                     estado='pendiente_pago',
                     metodo_pago='efectivo',
@@ -365,9 +365,9 @@ def cargar_datos_base():
                 ))
 
             if clases_voley_martes and luis_user:
-                clases_voley_martes[0].cupo_disponible -= 1
+                clases_voley_martes[1].cupo_disponible -= 1
                 db.session.add(Reserva(
-                    clase_id=clases_voley_martes[0].id,
+                    clase_id=clases_voley_martes[1].id,
                     usuario_id=luis_user.id,
                     estado='pendiente_pago',
                     metodo_pago='efectivo',
@@ -376,9 +376,9 @@ def cargar_datos_base():
                 ))
 
             if clases_padel_miercoles and luis_user:
-                clases_padel_miercoles[0].cupo_disponible -= 1
+                clases_padel_miercoles[1].cupo_disponible -= 1
                 db.session.add(Reserva(
-                    clase_id=clases_padel_miercoles[0].id,
+                    clase_id=clases_padel_miercoles[1].id,
                     usuario_id=luis_user.id,
                     estado='pendiente_pago',
                     metodo_pago='efectivo',
@@ -387,9 +387,9 @@ def cargar_datos_base():
                 ))
 
             if clases_basquet_jueves and luis_user:
-                clases_basquet_jueves[0].cupo_disponible -= 1
+                clases_basquet_jueves[1].cupo_disponible -= 1
                 db.session.add(Reserva(
-                    clase_id=clases_basquet_jueves[0].id,
+                    clase_id=clases_basquet_jueves[1].id,
                     usuario_id=luis_user.id,
                     estado='pendiente_pago',
                     metodo_pago='efectivo',
