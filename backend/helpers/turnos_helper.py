@@ -1,6 +1,7 @@
 import calendar
 from datetime import date, timedelta
-from models import Clase
+from models import db, Clase, Reserva
+
 
 # Mapeo de la base de datos a los días de Python (0 = Lunes, 6 = Domingo)
 DIAS_SEMANA_MAP = {
@@ -72,3 +73,41 @@ def generar_clases_para_rango(turno, fecha_desde, fecha_hasta):
         fecha_actual += timedelta(days=1)
 
     return clases_generadas
+
+
+
+def _clase_tiene_reservas(clase_id):
+    """Devuelve True si la clase tiene al menos una reserva no cancelada."""
+    reserva = Reserva.query.filter(
+        Reserva.clase_id == clase_id,
+        Reserva.estado.in_(['confirmada', 'pendiente_pago', 'asistio'])
+    ).first()
+    return reserva is not None
+
+
+def dar_de_baja_turno_y_clases(turno):
+    """
+    Baja lógica de un turno y de TODAS sus clases futuras activas.
+    Cancelar las reservas de esas clases y el reembolso son del módulo de reservas.
+    NO hace commit: el caller decide cuándo confirmar.
+    """
+    turno.activo = False
+    hoy = date.today()
+    clases_futuras = Clase.query.filter(
+        Clase.turno_id == turno.id,
+        Clase.fecha >= hoy,
+        Clase.activo == True
+    ).all()
+
+    clases_dadas_de_baja = 0
+    clases_con_reservas = 0
+    for clase in clases_futuras:
+        if _clase_tiene_reservas(clase.id):
+            clases_con_reservas += 1
+        clase.activo = False
+        clases_dadas_de_baja += 1
+
+    return {
+        "clases_futuras_dadas_de_baja": clases_dadas_de_baja,
+        "clases_con_reservas_canceladas": clases_con_reservas
+    }

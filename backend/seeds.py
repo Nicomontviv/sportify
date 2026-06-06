@@ -3,7 +3,7 @@ from datetime import date, datetime, time, timedelta
 from app import app, db
 from models import Usuario, Administrador, Actividad, Turno, Reserva, Clase, Empleado, Deposito
 from helpers.turnos_helper import generar_clases_para_mes
-
+# Seeds para la demo - Junio 2026
 def cargar_datos_base():
     print("🧼 [1/4] Limpiando residuos de turnos anteriores...")
     with app.app_context():
@@ -309,9 +309,9 @@ with app.app_context():
             db.session.flush()
 
             if clases_futbol_viernes and casual_user:
-                clases_futbol_viernes[0].cupo_disponible -= 1
+                clases_futbol_viernes[1].cupo_disponible -= 1
                 db.session.add(Reserva(
-                    clase_id=clases_futbol_viernes[0].id,
+                    clase_id=clases_futbol_viernes[1].id,
                     usuario_id=casual_user.id,
                     estado='pendiente_pago',
                     metodo_pago='tarjeta_virtual',
@@ -320,9 +320,9 @@ with app.app_context():
                 ))
 
             if clases_voley_martes and casual_user:
-                clases_voley_martes[0].cupo_disponible -= 1
+                clases_voley_martes[1].cupo_disponible -= 1
                 db.session.add(Reserva(
-                    clase_id=clases_voley_martes[0].id,
+                    clase_id=clases_voley_martes[1].id,
                     usuario_id=casual_user.id,
                     estado='pendiente_pago',
                     metodo_pago='tarjeta_virtual',
@@ -331,7 +331,7 @@ with app.app_context():
                 ))
 
             if clases_padel_miercoles and casual_user:
-                clases_padel_miercoles[0].cupo_disponible -= 1
+                clases_padel_miercoles[0].cupo_disponible = 0
                 db.session.add(Reserva(
                     clase_id=clases_padel_miercoles[0].id,
                     usuario_id=casual_user.id,
@@ -342,9 +342,9 @@ with app.app_context():
                 ))
 
             if clases_basquet_jueves and casual_user:
-                clases_basquet_jueves[0].cupo_disponible -= 1
+                clases_basquet_jueves[1].cupo_disponible -= 1
                 db.session.add(Reserva(
-                    clase_id=clases_basquet_jueves[0].id,
+                    clase_id=clases_basquet_jueves[1].id,
                     usuario_id=casual_user.id,
                     estado='pendiente_pago',
                     metodo_pago='tarjeta_virtual',
@@ -363,12 +363,12 @@ with app.app_context():
                     monto_pagado=10000.00
                 ))
 
-            # Escenario: reserva activa pero NO cancelable (clase comienza en 30 min)
-            # cancelable = now < inicio_clase - 1h = now < (now+30min-1h) = False
+            # Escenario: reserva activa pero NO cancelable (clase comienza en 60 min)
+            # cancelable = now < inicio_clase - 1h = now < (now+60min-1h) = False
             DIAS_ES = {0: 'lunes', 1: 'martes', 2: 'miercoles', 3: 'jueves', 4: 'viernes', 5: 'sabado', 6: 'domingo'}
             ahora_seed = datetime.now()
-            inicio_nc = (ahora_seed + timedelta(minutes=30)).replace(second=0, microsecond=0)
-            fin_nc    = (ahora_seed + timedelta(minutes=90)).replace(second=0, microsecond=0)
+            inicio_nc = (ahora_seed + timedelta(minutes=60)).replace(second=0, microsecond=0)
+            fin_nc    = (ahora_seed + timedelta(minutes=120)).replace(second=0, microsecond=0)
 
             turno_basquet_nc = Turno(
                 actividad_id=basquet_act.id,
@@ -401,9 +401,9 @@ with app.app_context():
                 ))
 
             if clases_futbol_viernes and luis_user:
-                clases_futbol_viernes[0].cupo_disponible -= 1
+                clases_futbol_viernes[1].cupo_disponible -= 1
                 db.session.add(Reserva(
-                    clase_id=clases_futbol_viernes[0].id,
+                    clase_id=clases_futbol_viernes[1].id,
                     usuario_id=luis_user.id,
                     estado='pendiente_pago',
                     metodo_pago='efectivo',
@@ -412,9 +412,9 @@ with app.app_context():
                 ))
 
             if clases_voley_martes and luis_user:
-                clases_voley_martes[0].cupo_disponible -= 1
+                clases_voley_martes[1].cupo_disponible -= 1
                 db.session.add(Reserva(
-                    clase_id=clases_voley_martes[0].id,
+                    clase_id=clases_voley_martes[1].id,
                     usuario_id=luis_user.id,
                     estado='pendiente_pago',
                     metodo_pago='efectivo',
@@ -423,9 +423,9 @@ with app.app_context():
                 ))
 
             if clases_padel_miercoles and luis_user:
-                clases_padel_miercoles[0].cupo_disponible -= 1
+                clases_padel_miercoles[1].cupo_disponible = 0
                 db.session.add(Reserva(
-                    clase_id=clases_padel_miercoles[0].id,
+                    clase_id=clases_padel_miercoles[1].id,
                     usuario_id=luis_user.id,
                     estado='pendiente_pago',
                     metodo_pago='efectivo',
@@ -433,10 +433,14 @@ with app.app_context():
                     monto_pagado=8000.00
                 ))
 
+            if clases_padel_miercoles:
+                for clase in clases_padel_miercoles:
+                    clase.cupo_disponible = 0
+
             if clases_basquet_jueves and luis_user:
-                clases_basquet_jueves[0].cupo_disponible -= 1
+                clases_basquet_jueves[1].cupo_disponible -= 1
                 db.session.add(Reserva(
-                    clase_id=clases_basquet_jueves[0].id,
+                    clase_id=clases_basquet_jueves[1].id,
                     usuario_id=luis_user.id,
                     estado='pendiente_pago',
                     metodo_pago='efectivo',
