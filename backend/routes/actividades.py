@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from models import db, Actividad, Turno, Reserva, Usuario,Administrador, Clase
- 
+from helpers.turnos_helper import dar_de_baja_turno_y_clases
+
 # Creamos el Blueprint para Actividades
 actividades_bp = Blueprint('actividades', __name__)
  
@@ -104,59 +105,30 @@ def eliminar_actividad(id):
     user_role = request.headers.get('X-User-Role')
     if user_role != 'admin':
         return jsonify({"status": "error", "message": "No autorizado"}), 403
- 
+
     actividad = db.session.get(Actividad, id)
     if not actividad:
         return jsonify({"status": "error", "message": "Actividad no encontrada"}), 404
- 
-    # 1. Baja lógica de la actividad
-    actividad.activa = False
- 
-    # 2. Buscar y deshabilitar todos sus turnos asociados
-    turnos_asociados = Turno.query.filter_by(actividad_id=id).all()
- 
-    usuarios_afectados_notificados = []
-    reembolsos_aplicados = 0
- 
-    for turno in turnos_asociados:
-        turno.activo = False
- 
-        # REGLA DE NEGOCIO: Cancelar reservas confirmadas o con pago pendiente
-        # BUG CORREGIDO: estado='pagada' no existe en el ENUM → buscar 'confirmada' y 'pendiente_pago'
-        reservas_activas = Reserva.query.filter(
-            Reserva.turno_id == clase.id,
-            Reserva.estado.in_(['confirmada', 'pendiente_pago'])
-        ).all()
- 
-        for reserva in reservas_activas:
-            # BUG CORREGIDO: estado='cancelada' no existe → usar 'cancelada_centro'
-            reserva.estado = 'cancelada_centro'
-            
-            # REFUERZO 1: Usar db.session.get en lugar de Query.get
-            user_afectado = db.session.get(Usuario, reserva.usuario_id)
- 
-            if user_afectado:
-                tipo_cliente = "Abonado" if user_afectado.is_abonado_actual else "Casual"
-                
-                # REFUERZO 2: Agregar "or 0.0" previene que float() rompa el código si la DB devuelve NULL
-                monto_devuelto = float(reserva.monto_pagado or 0.0)
-                reembolsos_aplicados += monto_devuelto
- 
-                usuarios_afectados_notificados.append({
-                    "usuario": f"{user_afectado.nombre} {user_afectado.apellido}",
-                    "tipo": tipo_cliente,
-                    "detalle": f"Devolución de seña de ${monto_devuelto:.2f} acreditada."
-                })
- 
+
     try:
+        actividad.activa = False
+        turnos_asociados = Turno.query.filter_by(actividad_id=id, activo=True).all()
+
+        total_clases = 0
+        total_con_reservas = 0
+        for turno in turnos_asociados:
+            detalle = dar_de_baja_turno_y_clases(turno)
+            total_clases += detalle["clases_futuras_dadas_de_baja"]
+            total_con_reservas += detalle["clases_con_reservas_canceladas"]
+
         db.session.commit()
         return jsonify({
             "status": "success",
             "message": "Actividad eliminada correctamente",
-            "detalles_demo": {
+            "detalles": {
                 "turnos_afectados": len(turnos_asociados),
-                "reembolsos_totales": reembolsos_aplicados,
-                "notificaciones": usuarios_afectados_notificados
+                "clases_dadas_de_baja": total_clases,
+                "clases_con_reservas": total_con_reservas
             }
         }), 200
     except Exception as e:

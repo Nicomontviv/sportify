@@ -1,6 +1,6 @@
 ====================================================================
 📁 ESTRUCTURA DEL PROYECTO (Generada con find)
-Fecha: Tue May 19 18:13:19     2026
+Fecha: Fri Jun  5 20:49:25     2026
 ====================================================================
 .
 ./README.md
@@ -9,13 +9,24 @@ Fecha: Tue May 19 18:13:19     2026
 ./backend/helpers
 ./backend/helpers/turnos_helper.py
 ./backend/models.py
+./backend/pytest.ini
 ./backend/requirements.txt
 ./backend/routes
 ./backend/routes/actividades.py
 ./backend/routes/auth.py
+./backend/routes/pagos.py
+./backend/routes/reservas.py
+./backend/routes/turnos.py
 ./backend/seeds.py
+./backend/test
+./backend/test/conftest.py
+./backend/test/test_actividades.py
+./backend/test/test_pagos.py
+./backend/test/test_reservas.py
+./backend/test/test_turnos.py
 ./database
 ./database/sportify.sql
+./docker-compose.yml
 ./estructura_proyecto.txt
 ./frontend
 ./frontend/README.md
@@ -38,8 +49,15 @@ Fecha: Tue May 19 18:13:19     2026
 ./frontend/src/main.jsx
 ./frontend/src/pages
 ./frontend/src/pages/AdminActividades.jsx
+./frontend/src/pages/AdminTurnos.jsx
 ./frontend/src/pages/InicioCliente.jsx
+./frontend/src/pages/InicioEmpleado.jsx
 ./frontend/src/pages/Login.jsx
+./frontend/src/pages/MisPagos.jsx
+./frontend/src/pages/MisReservas.jsx
+./frontend/src/pages/MostrarActividades.jsx
+./frontend/src/pages/PagoPresencial.jsx
+./frontend/src/pages/PagoVirtual.jsx
 ./frontend/src/pages/Registro.jsx
 ./frontend/tailwind.config.js
 ./frontend/vite.config.js
