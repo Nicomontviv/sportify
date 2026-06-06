@@ -102,7 +102,54 @@ def cargar_datos_base():
         db.session.add(casual_usuario)
         db.session.commit()
         print("✔️ Usuario Casual creado: casual@sportify.com / casual123!")
+    # Ana Sosa — usuario para caso de prueba Email duplicado
+print("🙋 Creando usuario Ana Sosa (caso prueba Email duplicado)...")
+with app.app_context():
+    from werkzeug.security import generate_password_hash
 
+    ana_email = "yaexiste@gmail.com"
+
+    ana_vieja = Usuario.query.filter_by(email=ana_email).first()
+    if ana_vieja:
+        db.session.delete(ana_vieja)
+        db.session.commit()
+        print("🧹 Viejo usuario Ana Sosa eliminado.")
+
+    ana_usuario = Usuario(
+        nombre="Ana",
+        apellido="Sosa",
+        dni="20555666",
+        email=ana_email,
+        password_hash=generate_password_hash("Clave!123"),
+        fecha_nacimiento=date(1995, 10, 10)
+    )
+    db.session.add(ana_usuario)
+    db.session.commit()
+    print("✔️ Usuario Ana Sosa creado con email yaexiste@gmail.com")
+    # Pedro Gomez — usuario para caso de prueba DNI duplicado
+print("🙋 Creando usuario Pedro Gomez (caso prueba DNI duplicado)...")
+with app.app_context():
+    from werkzeug.security import generate_password_hash
+
+    pedro_email = "pedro@mail.com"
+
+    pedro_viejo = Usuario.query.filter_by(email=pedro_email).first()
+    if pedro_viejo:
+        db.session.delete(pedro_viejo)
+        db.session.commit()
+        print("🧹 Viejo usuario Pedro Gomez eliminado.")
+
+    pedro_usuario = Usuario(
+        nombre="Pedro",
+        apellido="Gomez",
+        dni="15123123",
+        email=pedro_email,
+        password_hash=generate_password_hash("Clave!123"),
+        fecha_nacimiento=date(1988, 5, 5)
+    )
+    db.session.add(pedro_usuario)
+    db.session.commit()
+    print("✔️ Usuario Pedro Gomez creado con DNI 15123123")
     # Luis Gonzalez — usuario casual para HU pagopresencial
     print("🙋 [2.8/4] Creando usuario Casual Luis Gonzalez (HU pagopresencial)...")
     with app.app_context():

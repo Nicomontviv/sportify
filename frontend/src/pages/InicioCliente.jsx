@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import MisPagos from './MisPagos';
 import MostrarActividades from './MostrarActividades';
 import MisReservas from './MisReservas';
-
-const InicioCliente = ({ userSession, setIsLoggedIn }) => {
+import MiPerfil from './MiPerfil';
+const InicioCliente = ({ userSession, setIsLoggedIn,onLogout }) => {
   // Estado para controlar qué vista mostrar (agregado para pagos)
   const [vista, setVista] = useState('inicio');
 
@@ -21,6 +21,9 @@ const InicioCliente = ({ userSession, setIsLoggedIn }) => {
   if (vista === 'mis-reservas') {
     return <MisReservas userSession={userSession} onVolver={() => setVista('inicio')} />;
   }
+  if (vista === 'mi-perfil') {
+  return <MiPerfil userSession={userSession} onVolver={() => setVista('inicio')} />;
+}
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] p-6">
@@ -72,7 +75,13 @@ const InicioCliente = ({ userSession, setIsLoggedIn }) => {
             <p className="text-lg">Actividades</p>
             <p className="text-sm font-normal text-gray-500">Consultá las actividades disponibles</p>
           </button>
-
+          <button
+    onClick={() => setVista('mi-perfil')}
+    className="bg-white hover:bg-gray-50 text-[#212121] font-bold py-4 px-6 rounded-lg transition text-left border border-gray-200"
+  >
+    <p className="text-lg">👤 Mi Perfil</p>
+    <p className="text-sm font-normal text-gray-500">Modificá tus datos personales</p>
+  </button>
         </div>
          
         </div>

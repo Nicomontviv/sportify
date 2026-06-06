@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-const Registro = ({ alCambiarVista }) => { // <-- Asegurate de que tenga { alCambiarVista } entre las llaves
+const Registro = ({ alCambiarVista,onRegistroExitoso }) => { // <-- Asegurate de que tenga { alCambiarVista } entre las llaves
 
   // 1. Estados para capturar lo que escribe el usuario
   const [formData, setFormData] = useState({
@@ -43,6 +43,9 @@ const Registro = ({ alCambiarVista }) => { // <-- Asegurate de que tenga { alCam
         setMensaje({ tipo: 'success', texto: data.message });
         // Limpiar formulario si sale bien
         setFormData({ nombre: '', apellido: '', dni: '', email: '', password: '', fecha_nacimiento: '' });
+        setTimeout(() => {
+      onRegistroExitoso(data.usuario);
+    }, 1500);
       } else {
         setMensaje({ tipo: 'error', texto: data.message || 'Ocurrió un error.' });
       }
@@ -90,8 +93,8 @@ const Registro = ({ alCambiarVista }) => { // <-- Asegurate de que tenga { alCam
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#212121] mb-1">DNI</label>
-            <input type="text" name="dni" value={formData.dni} onChange={handleChange} required
+            <label className="block text-sm font-medium text-[#212121] mb-1" >DNI</label>
+            <input type="number" name="dni" value={formData.dni} onChange={handleChange} required
               className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-[#1E90FF]" />
           </div>
 

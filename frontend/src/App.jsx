@@ -5,17 +5,20 @@ import Registro from './pages/Registro';
 import AdminActividades from './pages/AdminActividades';
 import InicioCliente from './pages/InicioCliente'; 
 import InicioEmpleado from './pages/InicioEmpleado'; // NUEVO: vista del empleado
+import RecuperarPassword from './pages/RecuperarPassword'; // 
+import NuevaPassword from './pages/NuevaPassword';
 
 function App() {
- // 1. Buscamos primero si hay una sesión guardada (así la usamos para ambos)
-const sesionInicial = localStorage.getItem('sportify_sesion');
-
-// 2. Estado para saber si está logueado (Si hay sesión inicial, arranca en true, si no, en false)
+ const sesionInicial = localStorage.getItem('sportify_sesion');
 const [isLoggedIn, setIsLoggedIn] = useState(sesionInicial ? true : false);
-
-// 3. Estado para los datos del usuario (Si hay sesión, la convierte en objeto, si no, null)
-const [userSession, setUserSession] = useState(sesionInicial ? JSON.parse(sesionInicial) : null);  
-
+const [userSession, setUserSession] = useState(() => {
+  try {
+    return sesionInicial ? JSON.parse(sesionInicial) : null;
+  } catch {
+    localStorage.removeItem('sportify_sesion');
+    return null;
+  }
+});
 // 4. NUEVO ESTADO: Controla si el usuario ve el login o el registro antes de loguearse
 const [vista, setVista] = useState('login');
   const [loginEmail, setLoginEmail] = useState('');
@@ -41,7 +44,12 @@ const [vista, setVista] = useState('login');
       
     }
   };
-
+  useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('token')) {
+    setVista('nueva-password');
+  }
+}, []);
   useEffect(() => {
     if (isLoggedIn) cargarActividades();
   }, [isLoggedIn]);
@@ -117,16 +125,31 @@ const [vista, setVista] = useState('login');
 return (
     <>
      {!isLoggedIn ? (
-  vista === 'login' ? (
+      vista === 'nueva-password' ? (
+  <NuevaPassword onVolver={() => setVista('login')} />
+):
+      vista === 'recuperar' ? (
+  <RecuperarPassword onVolver={() => setVista('login')} />
+):
+  vista === 'registro' ? (
+    // En el padre, pasale estas props a Registro:
+<Registro 
+  onRegistroExitoso={(usuarioData) => {
+    localStorage.setItem('sportify_sesion', JSON.stringify(usuarioData));
+    setUserSession(usuarioData);
+    setIsLoggedIn(true);
+  }}
+  alCambiarVista={() => setVista('login')}  
+/>
+
+  ) : (
     <Login 
       loginEmail={loginEmail} setLoginEmail={setLoginEmail}
       loginPassword={loginPassword} setLoginPassword={setLoginPassword}
       loginError={loginError} handleLogin={handleLogin}
-      alCambiarVista={() => setVista('registro')} // <-- Agregamos esto
-    />
-  ) : (
-    <Registro 
-      alCambiarVista={() => setVista('login')} // <-- Agregamos esto
+      alCambiarVista={() => setVista('registro')}
+      onOlvidePassword={() => setVista('recuperar')}
+
     />
   )
 ) : (
@@ -158,10 +181,14 @@ return (
             setIsLoggedIn={setIsLoggedIn}
           />
         ) : (
-          <InicioCliente 
-            userSession={userSession} 
-            setIsLoggedIn={setIsLoggedIn} 
-          />
+        <InicioCliente 
+  userSession={userSession} 
+  setIsLoggedIn={setIsLoggedIn} 
+  onLogout={() => {
+    localStorage.removeItem('sportify_sesion');
+    setIsLoggedIn(false);
+  }}
+/>
         )
       )}
     </>
