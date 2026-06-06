@@ -284,7 +284,7 @@ def cargar_datos_base():
                 ))
 
             if clases_padel_miercoles and casual_user:
-                clases_padel_miercoles[0].cupo_disponible -= 1
+                clases_padel_miercoles[0].cupo_disponible = 0
                 db.session.add(Reserva(
                     clase_id=clases_padel_miercoles[0].id,
                     usuario_id=casual_user.id,
@@ -295,9 +295,9 @@ def cargar_datos_base():
                 ))
 
             if clases_basquet_jueves and casual_user:
-                clases_basquet_jueves[0].cupo_disponible -= 1
+                clases_basquet_jueves[1].cupo_disponible -= 1
                 db.session.add(Reserva(
-                    clase_id=clases_basquet_jueves[0].id,
+                    clase_id=clases_basquet_jueves[1].id,
                     usuario_id=casual_user.id,
                     estado='pendiente_pago',
                     metodo_pago='tarjeta_virtual',
@@ -316,12 +316,12 @@ def cargar_datos_base():
                     monto_pagado=10000.00
                 ))
 
-            # Escenario: reserva activa pero NO cancelable (clase comienza en 30 min)
-            # cancelable = now < inicio_clase - 1h = now < (now+30min-1h) = False
+            # Escenario: reserva activa pero NO cancelable (clase comienza en 60 min)
+            # cancelable = now < inicio_clase - 1h = now < (now+60min-1h) = False
             DIAS_ES = {0: 'lunes', 1: 'martes', 2: 'miercoles', 3: 'jueves', 4: 'viernes', 5: 'sabado', 6: 'domingo'}
             ahora_seed = datetime.now()
-            inicio_nc = (ahora_seed + timedelta(minutes=30)).replace(second=0, microsecond=0)
-            fin_nc    = (ahora_seed + timedelta(minutes=90)).replace(second=0, microsecond=0)
+            inicio_nc = (ahora_seed + timedelta(minutes=60)).replace(second=0, microsecond=0)
+            fin_nc    = (ahora_seed + timedelta(minutes=120)).replace(second=0, microsecond=0)
 
             turno_basquet_nc = Turno(
                 actividad_id=basquet_act.id,
@@ -376,7 +376,7 @@ def cargar_datos_base():
                 ))
 
             if clases_padel_miercoles and luis_user:
-                clases_padel_miercoles[1].cupo_disponible -= 1
+                clases_padel_miercoles[1].cupo_disponible = 0
                 db.session.add(Reserva(
                     clase_id=clases_padel_miercoles[1].id,
                     usuario_id=luis_user.id,
@@ -385,6 +385,10 @@ def cargar_datos_base():
                     monto_total=16000.00,
                     monto_pagado=8000.00
                 ))
+
+            if clases_padel_miercoles:
+                for clase in clases_padel_miercoles:
+                    clase.cupo_disponible = 0
 
             if clases_basquet_jueves and luis_user:
                 clases_basquet_jueves[1].cupo_disponible -= 1
