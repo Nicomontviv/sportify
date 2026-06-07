@@ -2,11 +2,34 @@ import React, { useState } from 'react';
 import MisPagos from './MisPagos';
 import MostrarActividades from './MostrarActividades';
 import MisReservas from './MisReservas';
+import MiPerfil from './MiPerfil';
 
 const InicioCliente = ({ userSession, setIsLoggedIn }) => {
   // Estado para controlar qué vista mostrar (agregado para pagos)
   const [vista, setVista] = useState('inicio');
 
+  const handleBajaCuenta = async () => {
+    if (!window.confirm("¿Seguro que querés dar de baja tu cuenta? No vas a poder volver a iniciar sesión.")) {
+      return;
+    }
+    try {
+      const response = await fetch(`http://127.0.0.1:5000/api/baja-cuenta/${userSession.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        alert(data.message);
+        localStorage.removeItem('sportify_sesion');  // borramos la sesión guardada
+        setIsLoggedIn(false);                          // y lo mandamos al login
+      } else {
+        alert(data.message || 'No se pudo dar de baja la cuenta.');
+      }
+    } catch (error) {
+      alert('No se pudo conectar con el servidor.');
+    }
+  };
+  
   // Si el usuario está en "Mis Pagos", mostramos esa vista
   if (vista === 'mis-pagos') {
     return <MisPagos userSession={userSession} onVolver={() => setVista('inicio')} />;
@@ -20,6 +43,10 @@ const InicioCliente = ({ userSession, setIsLoggedIn }) => {
   // Si el usuario está en "Mis Reservas", mostramos esa vista
   if (vista === 'mis-reservas') {
     return <MisReservas userSession={userSession} onVolver={() => setVista('inicio')} />;
+  }
+
+  if (vista === 'mi-perfil') {
+    return <MiPerfil userSession={userSession} setIsLoggedIn={setIsLoggedIn} onVolver={() => setVista('inicio')} />;
   }
 
   return (
@@ -69,9 +96,15 @@ const InicioCliente = ({ userSession, setIsLoggedIn }) => {
             <p className="text-lg">Actividades</p>
             <p className="text-sm font-normal text-gray-500">Consultá las actividades disponibles</p>
           </button>
-
+          <button
+            onClick={() => setVista('mi-perfil')}
+            className="bg-white hover:bg-gray-50 text-[#212121] font-bold py-4 px-6 rounded-lg transition text-left border border-gray-200"
+              >
+            <p className="text-lg"> Mi Perfil</p>
+            <p className="text-sm font-normal text-gray-500">Modificá tus datos personales</p>
+          </button>
         </div>
-         
+
         </div>
       </div>
     

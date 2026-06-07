@@ -28,6 +28,13 @@ const Registro = ({ alCambiarVista }) => { // <-- Asegurate de que tenga { alCam
     setMensaje({ tipo: '', texto: '' });
     setCargando(true);
 
+    if (formData.dni.length !== 8) {
+      setMensaje({ tipo: 'error', texto: 'El DNI debe tener 8 números.' });
+      setCargando(false);
+      return;
+    }
+
+
     try {
       const response = await fetch('http://127.0.0.1:5000/api/registro', {
         method: 'POST',
@@ -91,8 +98,11 @@ const Registro = ({ alCambiarVista }) => { // <-- Asegurate de que tenga { alCam
 
           <div>
             <label className="block text-sm font-medium text-[#212121] mb-1">DNI</label>
-            <input type="text" name="dni" value={formData.dni} onChange={handleChange} required
+            <input type="text" name="dni" value={formData.dni}
+              onChange={(e) => setFormData({ ...formData, dni: e.target.value.replace(/[^0-9]/g, '').slice(0, 8) })}
+              required maxLength={8} inputMode="numeric"
               className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-[#1E90FF]" />
+            <span className="text-xs text-gray-400">8 números, sin puntos.</span>
           </div>
 
           <div>
