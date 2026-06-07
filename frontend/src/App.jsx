@@ -3,6 +3,7 @@ import axios from 'axios';
 import Login from './pages/Login';
 import Registro from './pages/Registro';
 import AdminActividades from './pages/AdminActividades';
+import AdminTurnos from './pages/AdminTurnos';
 import InicioCliente from './pages/InicioCliente'; 
 import InicioEmpleado from './pages/InicioEmpleado'; // NUEVO: vista del empleado
 import RecuperarPassword from './pages/RecuperarPassword'; // 
@@ -21,6 +22,9 @@ const [userSession, setUserSession] = useState(() => {
 });
 // 4. NUEVO ESTADO: Controla si el usuario ve el login o el registro antes de loguearse
 const [vista, setVista] = useState('login');
+
+  const [vistaAdmin, setVistaAdmin] = useState('actividades');
+
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
@@ -39,8 +43,7 @@ const [vista, setVista] = useState('login');
       const response = await axios.get('http://127.0.0.1:5000/api/actividades');
       if (response.data.status === 'success') setActividades(response.data.actividades);
     } catch (error) {
-      console.error("Error al cargar disciplinas");edll
-      a
+      console.error("Error al cargar disciplinas");
       
     }
   };
@@ -99,6 +102,8 @@ const [vista, setVista] = useState('login');
     const payload = { nombre: nombreActividad, precio_base: precioActividad, descripcion: descripcionActividad };
     const config = {
   headers: {
+    'X-User-Role': userSession?.administrador ? 'admin' : 'cliente',
+
     'X-User-Id': userSession?.id // <-- Cambiamos esto para pasar el ID real
   }
 };
