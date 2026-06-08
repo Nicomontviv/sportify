@@ -142,7 +142,7 @@ def ver_reservas():
             clase = r.clase
             turno = clase.turno
             inicio_clase = datetime.combine(clase.fecha, turno.horario_inicio)
-            es_pasada = clase.fecha < date.today()
+            es_pasada = datetime.combine(clase.fecha, turno.horario_fin) < datetime.now()
             cancelable = (
                 r.estado not in ('cancelada_usuario', 'cancelada_centro')
                 and datetime.now() < inicio_clase - timedelta(hours=1)
