@@ -179,6 +179,29 @@ const MostrarActividades = ({ userSession, onVolver }) => {
     setTarjeta({ numero_tarjeta: '', titular: '', vencimiento: '', cvv: '' });
   };
 
+  // --- NUEVA FUNCIÓN: Unirse a la Lista de Espera ---
+  const handleUnirseListaEspera = async (claseId) => {
+    try {
+      const response = await axios.post('http://127.0.0.1:5000/api/lista-espera', 
+        { clase_id: claseId },
+        { headers: { 'X-User-Id': userSession.id } }
+      );
+      
+      // Mostrar éxito y limpiar posibles mensajes de error previos
+      setMensajePago(response.data.message);
+      setTipoMensajePago('success');
+      
+    } catch (error) {
+      if (error.response && error.response.status === 400) {
+        setMensajePago(error.response.data.message);
+        setTipoMensajePago('error');
+      } else {
+        setMensajePago("Ocurrió un error al intentar unirse a la lista de espera.");
+        setTipoMensajePago('error');
+      }
+    }
+  };
+
   return (
     <div>
       {actividadSeleccionada.id ? (
@@ -260,7 +283,13 @@ const MostrarActividades = ({ userSession, onVolver }) => {
                         </button>
                       </div>
                     ) : (
-                      <span className="text-gray-400 font-medium">Sin cupos</span>
+                      /* --- REEMPLAZO DEL TEXTO "Sin Cupos" POR EL BOTÓN DE LISTA DE ESPERA --- */
+                      <button
+                        onClick={() => handleUnirseListaEspera(clase.id)}
+                        className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition h-fit"
+                      >
+                        Unirse a lista de espera
+                      </button>
                     )}
                   </div>
                 </div>

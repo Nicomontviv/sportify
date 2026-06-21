@@ -157,3 +157,16 @@ class Deposito(db.Model):
     # senia: primer pago del 50%
     # pago_total: paga el 100% de una vez sin haber pagado nada antes
     # pago_parcial: paga el 50% restante después de haber pagado la seña
+    
+class ListaEspera(db.Model):
+    __tablename__ = 'lista_espera'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    clase_id = db.Column(db.Integer, db.ForeignKey('clase.id', onupdate='CASCADE', ondelete='CASCADE'), nullable=False)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id', onupdate='CASCADE', ondelete='CASCADE'), nullable=False)
+    fecha_inscripcion = db.Column(db.DateTime, default=db.func.current_timestamp(), nullable=False)
+    posicion = db.Column(db.SmallInteger, nullable=False)
+    
+    # Estados de la lista de espera
+    estado = db.Column(db.Enum('en_espera', 'notificado', 'confirmado', 'expirado', 'cancelado'), default='en_espera', nullable=False)
+    fecha_notificacion = db.Column(db.DateTime, nullable=True)
