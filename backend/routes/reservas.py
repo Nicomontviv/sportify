@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from models import Credito, db, Reserva, Clase, Turno, Actividad, Usuario
 from sqlalchemy.orm import joinedload
 from datetime import date, datetime, timedelta
+from helpers.espera_helper import procesar_lista_espera_al_cancelar
 
 reservas_bp = Blueprint('reservas', __name__)
 # Rutas de reservas
@@ -109,8 +110,9 @@ def cancelar_reserva(id):
         credito_usuario.cancelaciones += 1
     try:
         reserva.estado='cancelada_usuario'
-        clase.cupo_disponible += 1
+        #clase.cupo_disponible += 1  //dejo esto comentado por las dudas 
         db.session.commit()
+        procesar_lista_espera_al_cancelar(reserva.clase_id, user_id)
         return jsonify({
             "status": "success",
             "message": "La reserva se canceló con éxito",
