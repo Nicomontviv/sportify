@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify
 from models import db, Clase, ListaEspera, Usuario
-
+from datetime import datetime, timedelta
+from models import Reserva
+from helpers.espera_helper import procesar_lista_espera_al_cancelar
 # Creamos un Blueprint exclusivo para la lista de espera
 lista_espera_bp = Blueprint('lista_espera', __name__)
 
@@ -49,3 +51,80 @@ def unirse_lista_espera():
     except Exception as e:
         db.session.rollback()
         return jsonify({"status": "error", "message": str(e)}), 500
+    # ==========================================
+# ENDPOINT: Confirmación y Pago (Con Límite de Tiempo)
+# ==========================================
+@lista_espera_bp.route('/<int:inscripcion_id>/confirmar', methods=['POST'])
+def confirmar_lugar_espera(inscripcion_id):
+    user_id = request.headers.get('X-User-Id')
+    
+    inscripcion = db.session.get(ListaEspera, inscripcion_id)
+    if not inscripcion or str(inscripcion.usuario_id) != str(user_id):
+        return jsonify({"status": "error", "message": "Inscripción no encontrada o no autorizada"}), 404
+
+    if inscripcion.estado != 'notificado':
+        return jsonify({"status": "error", "message": "Esta inscripción no está pendiente de confirmación"}), 400
+
+    ahora = datetime.now()
+    limite = inscripcion.fecha_notificacion + timedelta(minutes=60)
+
+    # Buscamos la reserva pendiente que le generó el Helper
+    reserva = Reserva.query.filter_by(clase_id=inscripcion.clase_id, usuario_id=user_id, estado='pendiente_pago').first()
+
+    # ESCENARIO 2: Expiró el tiempo
+    if ahora > limite:
+        inscripcion.estado = 'expirado'
+        if reserva:
+            reserva.estado = 'cancelada_centro' # Anulamos su reserva pendiente
+        db.session.commit()
+        
+        # Cedemos el lugar: El sistema gira la rueda y llama al siguiente en la fila
+        procesar_lista_espera_al_cancelar(inscripcion.clase_id, user_id)
+        
+        return jsonify({"status": "error", "message": "El tiempo ha expirado y la reserva ha sido cedida al siguiente interesado."}), 400
+
+    # ESCENARIO 1: Dentro del tiempo (Éxito)
+    try:
+        # Simulamos la confirmación del pago
+        if reserva:
+            reserva.estado = 'confirmada'
+            reserva.monto_pagado = reserva.monto_total # Simulamos pago completo
+        
+        inscripcion.estado = 'confirmado'
+        db.session.commit()
+        
+        return jsonify({"status": "success", "message": "Pago exitoso. Turno confirmado formalmente."}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+# ==========================================
+# ENDPOINT: Estadísticas para el Administrador
+# ==========================================
+@lista_espera_bp.route('/estadisticas/<int:clase_id>', methods=['GET'])
+def estadisticas_espera(clase_id):
+    user_role = request.headers.get('X-User-Role')
+    if user_role != 'admin':
+        return jsonify({"status": "error", "message": "No autorizado. Vista exclusiva para Administradores."}), 403
+
+    esperando = ListaEspera.query.filter_by(clase_id=clase_id, estado='en_espera').all()
+    
+    abonados = 0
+    no_abonados = 0
+    
+    for insc in esperando:
+        user = db.session.get(Usuario, insc.usuario_id)
+        if user.is_abonado_actual:
+            abonados += 1
+        else:
+            no_abonados += 1
+
+    return jsonify({
+        "status": "success",
+        "estadisticas": {
+            "total_general": len(esperando),
+            "abonados": abonados,
+            "no_abonados": no_abonados
+        }
+    }), 200
