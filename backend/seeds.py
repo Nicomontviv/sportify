@@ -267,7 +267,7 @@ def cargar_datos_base():
                     clase_id=clases_futbol_viernes[1].id,
                     usuario_id=casual_user.id,
                     estado='pendiente_pago',
-                    metodo_pago='tarjeta_virtual',
+                    metodo_pago='mercado_pago',
                     monto_total=20000.00,
                     monto_pagado=10000.00
                 ))
@@ -278,7 +278,7 @@ def cargar_datos_base():
                     clase_id=clases_voley_martes[1].id,
                     usuario_id=casual_user.id,
                     estado='pendiente_pago',
-                    metodo_pago='tarjeta_virtual',
+                    metodo_pago='mercado_pago',
                     monto_total=18000.00,
                     monto_pagado=9000.00
                 ))
@@ -289,7 +289,7 @@ def cargar_datos_base():
                     clase_id=clases_padel_miercoles[0].id,
                     usuario_id=casual_user.id,
                     estado='pendiente_pago',
-                    metodo_pago='tarjeta_virtual',
+                    metodo_pago='mercado_pago',
                     monto_total=16000.00,
                     monto_pagado=8000.00
                 ))
@@ -300,7 +300,7 @@ def cargar_datos_base():
                     clase_id=clases_basquet_jueves[1].id,
                     usuario_id=casual_user.id,
                     estado='pendiente_pago',
-                    metodo_pago='tarjeta_virtual',
+                    metodo_pago='mercado_pago',
                     monto_total=18000.00,
                     monto_pagado=9000.00
                 ))
@@ -311,7 +311,7 @@ def cargar_datos_base():
                     clase_id=clases_futbol_lunes[0].id,
                     usuario_id=casual_user.id,
                     estado='pendiente_pago',
-                    metodo_pago='tarjeta_virtual',
+                    metodo_pago='mercado_pago',
                     monto_total=20000.00,
                     monto_pagado=10000.00
                 ))
@@ -325,7 +325,7 @@ def cargar_datos_base():
 
             turno_basquet_nc = Turno(
                 actividad_id=basquet_act.id,
-                dia_semana=DIAS_ES[ahora_seed.weekday()],
+                dia_semana='lunes',
                 horario_inicio=inicio_nc.time(),
                 horario_fin=fin_nc.time(),
                 cupo_maximo=12,
@@ -348,7 +348,7 @@ def cargar_datos_base():
                     clase_id=clase_basquet_nc.id,
                     usuario_id=casual_user.id,
                     estado='pendiente_pago',
-                    metodo_pago='tarjeta_virtual',
+                    metodo_pago='mercado_pago',
                     monto_total=18000.00,
                     monto_pagado=9000.00
                 ))
@@ -411,7 +411,50 @@ def cargar_datos_base():
             print("   HUpagovirtual:      casual@sportify.com    / casual123!     (Juan Perez    DNI 99999999)")
             print("   HUpagopresencial:      luis@sportify.com      / luis123!       (Luis Gonzalez DNI 88888888)")
             print("   Sin reserva:  gonzalo@sportify.com   / gonzalo123!    (Gonzalo Lopez DNI 22555111)")
+        # ==========================================================
+            # 🌟 ESCENARIO PRE-COCINADO PARA LA MUESTRA: LISTA DE ESPERA
+            # ==========================================================
+            print("🎬 Configurando escenario para la Muestra de Lista de Espera...")
+            
+            from models import Credito, ListaEspera
+            from werkzeug.security import generate_password_hash
+            ahora = datetime.now()
 
+            # 1. Crear Usuario Cancelador (Abonado)
+            titular = Usuario(nombre="Titular", apellido="Abonado", dni="10000001", email="titular@sportify.com", password_hash=generate_password_hash("123"), fecha_nacimiento=date(1990, 1, 1))
+            db.session.add(titular)
+            db.session.flush()
+            db.session.add(Credito(usuario_id=titular.id, mes=ahora.month, anio=ahora.year, pagado=True, descuento_activo=True))
+
+            # 2. Crear Usuario en Espera (Casual - Llegó PRIMERO)
+            espera_casual = Usuario(nombre="Espera", apellido="Casual", dni="10000002", email="espera.casual@sportify.com", password_hash=generate_password_hash("123"), fecha_nacimiento=date(1990, 1, 1))
+            db.session.add(espera_casual)
+
+            # 3. Crear Usuario en Espera (Abonado - Llegó SEGUNDO)
+            espera_abonado = Usuario(nombre="Espera", apellido="Abonado", dni="10000003", email="espera.abonado@sportify.com", password_hash=generate_password_hash("123"), fecha_nacimiento=date(1990, 1, 1))
+            db.session.add(espera_abonado)
+            db.session.flush()
+            db.session.add(Credito(usuario_id=espera_abonado.id, mes=ahora.month, anio=ahora.year, pagado=True, descuento_activo=True))
+
+            # 4. Crear un Turno y una Clase con Cupo 1 (y llenarlo con el Titular)
+            turno_muestra = Turno(actividad_id=futbol_act.id, dia_semana='viernes', horario_inicio=time(20, 0), horario_fin=time(21, 0), cupo_maximo=1, activo=True)
+            db.session.add(turno_muestra)
+            db.session.flush()
+            
+            clase_muestra = Clase(turno_id=turno_muestra.id, fecha=date.today(), cupo_disponible=0, activo=True)
+            db.session.add(clase_muestra)
+            db.session.flush()
+
+            # El titular tiene la reserva confirmada
+            db.session.add(Reserva(clase_id=clase_muestra.id, usuario_id=titular.id, estado='confirmada', metodo_pago='efectivo', monto_total=20000.0, monto_pagado=20000.0))
+
+            # Los otros dos están en la lista de espera
+            db.session.add(ListaEspera(clase_id=clase_muestra.id, usuario_id=espera_casual.id, posicion=1, estado='en_espera'))
+            db.session.add(ListaEspera(clase_id=clase_muestra.id, usuario_id=espera_abonado.id, posicion=2, estado='en_espera'))
+            
+            db.session.commit()
+            print("✔️ Escenario de muestra listo: Titular Abonado tiene el cupo. Casual está #1 en espera, Abonado está #2 en espera.")
+            # ==========================================================
         except Exception as e:
             db.session.rollback()
             print(f"⚠️ Nota: No se pudieron cargar los turnos de prueba: {str(e)}")
