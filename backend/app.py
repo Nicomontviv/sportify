@@ -12,6 +12,7 @@ from routes.pagos import pagos_bp
 from routes.reservas import reservas_bp
 # Importar el nuevo archivo
 from routes.lista_espera import lista_espera_bp
+from routes.asistencia import asistencia_bp
 
 
 load_dotenv()
@@ -36,6 +37,7 @@ app.register_blueprint(turnos_bp, url_prefix='/api/turnos')  # NUEVO
 app.register_blueprint(pagos_bp, url_prefix='/api/pagos')
 app.register_blueprint(reservas_bp, url_prefix='/api/reservas')
 app.register_blueprint(lista_espera_bp, url_prefix='/api/lista-espera')
+app.register_blueprint(asistencia_bp, url_prefix='/api/asistencia')
 
 
 if __name__ == '__main__':

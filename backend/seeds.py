@@ -455,6 +455,96 @@ def cargar_datos_base():
             db.session.commit()
             print("✔️ Escenario de muestra listo: Titular Abonado tiene el cupo. Casual está #1 en espera, Abonado está #2 en espera.")
             # ==========================================================
+
+            # ==========================================================
+            # 🎟️ ESCENARIO DEMO: CONTROL DE ACCESO POR QR (HU asistencia)
+            # 4 reservas, todas con clase de HOY:
+            #   #47 Juan Perez    -> CASO OK (se escanea por QR). Tambien sirve
+            #                        para "ya asistio": despues de marcarla en la
+            #                        demo, volves a escanear y salta el mensaje.
+            #   #48 Luis Gonzalez -> "La clase ya finalizo"  (clase 08:00-09:00).
+            #   #49 Gonzalo Lopez -> "Todavia no es horario de ingreso" (23:00-23:59).
+            #   #50 Juan Perez    -> "La reserva esta cancelada".
+            # Los casos de error (#48, #49, #50) se muestran con el INGRESO MANUAL.
+            #
+            # La #47 usa horario relativo a "ahora" para estar SIEMPRE valida al
+            # correr el seed. Corre el seed en horario diurno (entre ~09:00 y
+            # ~22:50) para que #48 y #49 den los mensajes correctos.
+            # ==========================================================
+            print("🎬 Configurando escenario para la Muestra de Control de Acceso (QR)...")
+
+            gonzalo_user = Usuario.query.filter_by(email="gonzalo@sportify.com").first()
+            ahora_qr = datetime.now()
+
+            # ---- #47: CASO OK (Juan Perez) - clase viva alrededor de "ahora" ----
+            inicio_ok = (ahora_qr - timedelta(minutes=5)).replace(second=0, microsecond=0)
+            fin_ok    = (ahora_qr + timedelta(minutes=60)).replace(second=0, microsecond=0)
+            turno_ok = Turno(
+                actividad_id=futbol_act.id, dia_semana='martes',
+                horario_inicio=inicio_ok.time(), horario_fin=fin_ok.time(),
+                cupo_maximo=12, activo=True
+            )
+            db.session.add(turno_ok)
+            db.session.flush()
+            clase_ok = Clase(turno_id=turno_ok.id, fecha=date.today(), cupo_disponible=11, activo=True)
+            db.session.add(clase_ok)
+            db.session.flush()
+            db.session.add(Reserva(
+                id=47, clase_id=clase_ok.id, usuario_id=casual_user.id,
+                estado='confirmada', metodo_pago='efectivo',
+                monto_total=20000.00, monto_pagado=20000.00
+            ))
+
+            # ---- #48: "La clase ya finalizo" (Luis Gonzalez) - clase 08:00-09:00 ----
+            turno_fin = Turno(
+                actividad_id=futbol_act.id, dia_semana='miercoles',
+                horario_inicio=time(8, 0), horario_fin=time(9, 0),
+                cupo_maximo=12, activo=True
+            )
+            db.session.add(turno_fin)
+            db.session.flush()
+            clase_fin = Clase(turno_id=turno_fin.id, fecha=date.today(), cupo_disponible=11, activo=True)
+            db.session.add(clase_fin)
+            db.session.flush()
+            db.session.add(Reserva(
+                id=48, clase_id=clase_fin.id, usuario_id=luis_user.id,
+                estado='confirmada', metodo_pago='efectivo',
+                monto_total=20000.00, monto_pagado=20000.00
+            ))
+
+            # ---- #49: "Todavia no es horario de ingreso" (Gonzalo Lopez) - clase 23:00-23:59 ----
+            turno_falta = Turno(
+                actividad_id=futbol_act.id, dia_semana='jueves',
+                horario_inicio=time(23, 0), horario_fin=time(23, 59),
+                cupo_maximo=12, activo=True
+            )
+            db.session.add(turno_falta)
+            db.session.flush()
+            clase_falta = Clase(turno_id=turno_falta.id, fecha=date.today(), cupo_disponible=11, activo=True)
+            db.session.add(clase_falta)
+            db.session.flush()
+            db.session.add(Reserva(
+                id=49, clase_id=clase_falta.id, usuario_id=gonzalo_user.id,
+                estado='confirmada', metodo_pago='efectivo',
+                monto_total=20000.00, monto_pagado=20000.00
+            ))
+
+            # ---- #50: "La reserva esta cancelada" (Juan Perez) ----
+            # Apunta a la misma clase OK; el chequeo de cancelada salta primero,
+            # asi que el horario de la clase no influye en este caso.
+            db.session.add(Reserva(
+                id=50, clase_id=clase_ok.id, usuario_id=casual_user.id,
+                estado='cancelada_usuario', metodo_pago='efectivo',
+                monto_total=20000.00, monto_pagado=10000.00
+            ))
+
+            db.session.commit()
+            print("✔️ Reservas de asistencia listas:")
+            print("   #47 Juan Perez    -> OK (escanear QR). El texto del QR debe ser: 47")
+            print("   #48 Luis Gonzalez -> 'la clase ya finalizo' (manual)")
+            print("   #49 Gonzalo Lopez -> 'todavia no es horario de ingreso' (manual)")
+            print("   #50 Juan Perez    -> 'la reserva esta cancelada' (manual)")
+            
         except Exception as e:
             db.session.rollback()
             print(f"⚠️ Nota: No se pudieron cargar los turnos de prueba: {str(e)}")

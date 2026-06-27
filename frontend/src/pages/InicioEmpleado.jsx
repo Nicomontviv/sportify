@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import PagoPresencial from './PagoPresencial';
 import BajaUsuario from './BajaUsuario';
+import Asistencia from './Asistencia';
 
 const InicioEmpleado = ({ userSession, setIsLoggedIn }) => {
   // Estado para controlar qué vista mostrar
@@ -12,6 +13,9 @@ if (vista === 'pago-presencial') {
   }
   if (vista === 'baja-usuario') {                                         
     return <BajaUsuario userSession={userSession} onVolver={() => setVista('inicio')} />; 
+  }
+  if (vista === 'asistencia') {
+    return <Asistencia userSession={userSession} onVolver={() => setVista('inicio')} />;
   }
 
   return (
@@ -48,6 +52,13 @@ if (vista === 'pago-presencial') {
           >
             <p className="text-lg">🗑️ Dar de baja usuario</p>
             <p className="text-sm font-normal text-gray-500">Baja lógica de un usuario por DNI</p>
+          </button>
+          <button
+            onClick={() => setVista('asistencia')}
+            className="bg-[#1E90FF] hover:bg-[#00CED1] text-white font-bold py-4 px-6 rounded-lg transition text-left"
+          >
+            <p className="text-lg">✅ Registrar asistencia</p>
+            <p className="text-sm font-normal opacity-80">Validá el ingreso por QR o N° de reserva</p>
           </button>
         </div>
       </div>
