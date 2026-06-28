@@ -4,6 +4,7 @@ import BajaUsuario from './BajaUsuario';
 import ReactivarUsuario from './ReactivarUsuario';
 import RegistrarCertificado from './RegistrarCertificado';
 import RegistrarUsuario from './RegistrarUsuario';
+import Asistencia from './Asistencia';
 
 const InicioEmpleado = ({ userSession, setIsLoggedIn }) => {
   const [vista, setVista] = useState('inicio');
@@ -22,6 +23,9 @@ const InicioEmpleado = ({ userSession, setIsLoggedIn }) => {
   }
   if (vista === 'registrar-usuario') {
     return <RegistrarUsuario alVolver={() => setVista('inicio')} />;
+  }
+  if (vista === 'asistencia') {
+    return <Asistencia userSession={userSession} onVolver={() => setVista('inicio')} />;
   }
 
   return (
@@ -74,6 +78,12 @@ const InicioEmpleado = ({ userSession, setIsLoggedIn }) => {
             className="bg-white hover:bg-gray-50 text-[#212121] font-bold py-4 px-6 rounded-lg transition text-left border border-gray-200">
             <p className="text-lg">📝 Registrar usuario</p>
             <p className="text-sm font-normal text-gray-500">Registrá un nuevo usuario en el sistema</p>
+          </button>
+          <button
+            onClick={() => setVista('asistencia')}
+            className="bg-[#1E90FF] hover:bg-[#00CED1] text-white font-bold py-4 px-6 rounded-lg transition text-left">
+            <p className="text-lg">✅ Registrar asistencia</p>
+            <p className="text-sm font-normal opacity-80">Validá el ingreso por QR o N° de reserva</p>
           </button>
         </div>
       </div>
