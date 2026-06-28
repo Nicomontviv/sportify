@@ -1,17 +1,27 @@
 import React, { useState } from 'react';
 import PagoPresencial from './PagoPresencial';
 import BajaUsuario from './BajaUsuario';
+import ReactivarUsuario from './ReactivarUsuario';
+import RegistrarCertificado from './RegistrarCertificado';
+import RegistrarUsuario from './RegistrarUsuario';
 
 const InicioEmpleado = ({ userSession, setIsLoggedIn }) => {
-  // Estado para controlar qué vista mostrar
   const [vista, setVista] = useState('inicio');
 
-  // Si el empleado está en "Pago Presencial", mostramos esa vista
-if (vista === 'pago-presencial') {
+  if (vista === 'pago-presencial') {
     return <PagoPresencial userSession={userSession} onVolver={() => setVista('inicio')} />;
   }
-  if (vista === 'baja-usuario') {                                         
-    return <BajaUsuario userSession={userSession} onVolver={() => setVista('inicio')} />; 
+  if (vista === 'baja-usuario') {
+    return <BajaUsuario userSession={userSession} onVolver={() => setVista('inicio')} />;
+  }
+  if (vista === 'reactivar-usuario') {
+    return <ReactivarUsuario alVolver={() => setVista('inicio')} />;
+  }
+  if (vista === 'registrar-certificado') {
+    return <RegistrarCertificado alVolver={() => setVista('inicio')} />;
+  }
+  if (vista === 'registrar-usuario') {
+    return <RegistrarUsuario alVolver={() => setVista('inicio')} />;
   }
 
   return (
@@ -37,17 +47,33 @@ if (vista === 'pago-presencial') {
         <div className="grid grid-cols-2 gap-4">
           <button
             onClick={() => setVista('pago-presencial')}
-            className="bg-[#1E90FF] hover:bg-[#00CED1] text-white font-bold py-4 px-6 rounded-lg transition text-left"
-          >
+            className="bg-[#1E90FF] hover:bg-[#00CED1] text-white font-bold py-4 px-6 rounded-lg transition text-left">
             <p className="text-lg">📋 Gestión de Reservas</p>
             <p className="text-sm font-normal opacity-80">Creá reservas y registrá cobros de usuarios</p>
           </button>
           <button
             onClick={() => setVista('baja-usuario')}
-            className="bg-white hover:bg-gray-50 text-[#212121] font-bold py-4 px-6 rounded-lg transition text-left border border-gray-200"
-          >
+            className="bg-white hover:bg-gray-50 text-[#212121] font-bold py-4 px-6 rounded-lg transition text-left border border-gray-200">
             <p className="text-lg">🗑️ Dar de baja usuario</p>
             <p className="text-sm font-normal text-gray-500">Baja lógica de un usuario por DNI</p>
+          </button>
+          <button
+            onClick={() => setVista('reactivar-usuario')}
+            className="bg-white hover:bg-gray-50 text-[#212121] font-bold py-4 px-6 rounded-lg transition text-left border border-gray-200">
+            <p className="text-lg">✅ Reactivar usuario</p>
+            <p className="text-sm font-normal text-gray-500">Reactivá un usuario dado de baja por DNI</p>
+          </button>
+          <button
+            onClick={() => setVista('registrar-certificado')}
+            className="bg-white hover:bg-gray-50 text-[#212121] font-bold py-4 px-6 rounded-lg transition text-left border border-gray-200">
+            <p className="text-lg">📄 Registrar certificado</p>
+            <p className="text-sm font-normal text-gray-500">Registrá el certificado de aptitud física de un usuario</p>
+          </button>
+          <button
+            onClick={() => setVista('registrar-usuario')}
+            className="bg-white hover:bg-gray-50 text-[#212121] font-bold py-4 px-6 rounded-lg transition text-left border border-gray-200">
+            <p className="text-lg">📝 Registrar usuario</p>
+            <p className="text-sm font-normal text-gray-500">Registrá un nuevo usuario en el sistema</p>
           </button>
         </div>
       </div>

@@ -42,6 +42,9 @@ CREATE TABLE usuario (
   fecha_nacimiento DATE          NOT NULL,
   activo            TINYINT(1)    NOT NULL DEFAULT 1,
   fecha_alta        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  token_recuperacion       VARCHAR(255)  NULL,
+  token_recuperacion_usado TINYINT       NOT NULL DEFAULT 0,
+  email_confirmado         TINYINT       NOT NULL DEFAULT 0,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB;
 

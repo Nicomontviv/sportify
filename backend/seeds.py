@@ -1,13 +1,14 @@
 import os
 from datetime import date, datetime, time, timedelta
 from app import app, db
-from models import Usuario, Administrador, Actividad, Turno, Reserva, Clase, Empleado, Deposito
+from models import Usuario, Administrador, Actividad, Turno, Reserva, Clase, Empleado, Deposito, Certificado
 from helpers.turnos_helper import generar_clases_para_mes
 # Seeds para la demo - Junio 2026
 def cargar_datos_base():
     print("🧼 [1/4] Limpiando residuos de turnos anteriores...")
     with app.app_context():
         try:
+            db.session.query(Certificado).delete()
             db.session.query(Deposito).delete()
             db.session.query(Reserva).delete()
             db.session.query(Clase).delete()
@@ -267,7 +268,7 @@ def cargar_datos_base():
                     clase_id=clases_futbol_viernes[1].id,
                     usuario_id=casual_user.id,
                     estado='pendiente_pago',
-                    metodo_pago='mercado_pago',
+                    metodo_pago='tarjeta_virtual',
                     monto_total=20000.00,
                     monto_pagado=10000.00
                 ))
@@ -278,7 +279,7 @@ def cargar_datos_base():
                     clase_id=clases_voley_martes[1].id,
                     usuario_id=casual_user.id,
                     estado='pendiente_pago',
-                    metodo_pago='mercado_pago',
+                    metodo_pago='tarjeta_virtual',
                     monto_total=18000.00,
                     monto_pagado=9000.00
                 ))
@@ -289,7 +290,7 @@ def cargar_datos_base():
                     clase_id=clases_padel_miercoles[0].id,
                     usuario_id=casual_user.id,
                     estado='pendiente_pago',
-                    metodo_pago='mercado_pago',
+                    metodo_pago='tarjeta_virtual',
                     monto_total=16000.00,
                     monto_pagado=8000.00
                 ))
@@ -300,7 +301,7 @@ def cargar_datos_base():
                     clase_id=clases_basquet_jueves[1].id,
                     usuario_id=casual_user.id,
                     estado='pendiente_pago',
-                    metodo_pago='mercado_pago',
+                    metodo_pago='tarjeta_virtual',
                     monto_total=18000.00,
                     monto_pagado=9000.00
                 ))
@@ -311,7 +312,7 @@ def cargar_datos_base():
                     clase_id=clases_futbol_lunes[0].id,
                     usuario_id=casual_user.id,
                     estado='pendiente_pago',
-                    metodo_pago='mercado_pago',
+                    metodo_pago='tarjeta_virtual',
                     monto_total=20000.00,
                     monto_pagado=10000.00
                 ))
@@ -348,7 +349,7 @@ def cargar_datos_base():
                     clase_id=clase_basquet_nc.id,
                     usuario_id=casual_user.id,
                     estado='pendiente_pago',
-                    metodo_pago='mercado_pago',
+                    metodo_pago='tarjeta_virtual',
                     monto_total=18000.00,
                     monto_pagado=9000.00
                 ))

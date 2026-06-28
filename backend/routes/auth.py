@@ -3,9 +3,35 @@ from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from models import db, Usuario, Administrador, Empleado
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 
 # Creamos el Blueprint para Autenticación
 auth_bp = Blueprint('auth', __name__)
+
+# Clave secreta para firmar los tokens de recuperación y confirmación
+CLAVE_SECRETA_TOKEN = "sportify-recuperacion-2026"
+serializer = URLSafeTimedSerializer(CLAVE_SECRETA_TOKEN)
+
+def generar_token_recuperacion(email):
+    """Genera un token único y lo guarda en la BD"""
+    token = serializer.dumps(email, salt="recuperacion-contrasena")
+    usuario = Usuario.query.filter_by(email=email).first()
+    if usuario:
+        usuario.token_recuperacion = token
+        usuario.token_recuperacion_usado = False
+        db.session.commit()
+    return token
+
+def verificar_token_recuperacion(token, max_age=3600):
+    """Verifica el token y devuelve el email si es válido"""
+    try:
+        email = serializer.loads(token, salt="recuperacion-contrasena", max_age=max_age)
+        return email
+    except SignatureExpired:
+        return None
+    except BadSignature:
+        return None
+
 
 # -----------------------------------------------------------------
 # 1. ENDPOINT: REGISTRAR USUARIO 
@@ -227,32 +253,10 @@ def modificar_perfil(usuario_id):
         if password:
             usuario.password_hash = generate_password_hash(password)
 
-        # Regla 2: si cambió el email, enviamos confirmación y NO lo actualizamos todavía
         if email_cambiado:
-            token = generar_token(email)
+            token = generar_token_recuperacion(email)
             link = f"http://localhost:5173/confirmar-email?token={token}&usuario_id={usuario_id}"
-            try:
-                from extensions import mail
-                from flask_mail import Message
-                msg = Message(
-                    subject="Confirmá tu nuevo email - Sportify",
-                    recipients=[email],
-                    body=f"""
-Hola {nombre},
-
-Recibimos una solicitud para cambiar tu email en Sportify.
-
-Hacé clic en el siguiente link para confirmar tu nuevo email:
-{link}
-
-Este link expira en 1 hora. Si no solicitaste esto, ignorá este mail.
-
-El equipo de Sportify
-                    """
-                )
-                mail.send(msg)
-            except Exception as e:
-                print(f"Error al enviar mail: {e}")
+            print(f"[SIMULACIÓN MAIL] Link de confirmación de email para {email}: {link}")
         else:
             usuario.email = email
 
@@ -267,6 +271,7 @@ El equipo de Sportify
     except Exception as e:
         db.session.rollback()
         return jsonify({"status": "error", "message": f"Error al actualizar: {str(e)}"}), 500
+
 # -----------------------------------------------------------------
 # ENDPOINT: CONFIRMAR NUEVO EMAIL
 # -----------------------------------------------------------------
@@ -278,7 +283,7 @@ def confirmar_email():
     if not token or not usuario_id:
         return jsonify({"status": "error", "message": "Token o usuario inválido"}), 400
 
-    email = verificar_token(token)
+    email = verificar_token_recuperacion(token)
     if not email:
         return jsonify({"status": "error", "message": "El link expiró o es inválido"}), 400
 
@@ -360,3 +365,263 @@ def baja_cuenta(usuario_id):
         return jsonify({"status": "error", "message": f"Error al dar de baja: {str(e)}"}), 500
 
 
+# -----------------------------------------------------------------
+# ENDPOINT: REACTIVAR USUARIO (HU #62)
+# -----------------------------------------------------------------
+@auth_bp.route('/reactivar-usuario', methods=['PUT'])
+def reactivar_usuario():
+    datos = request.get_json()
+    dni = datos.get('dni', '').strip()
+
+    if not dni:
+        return jsonify({"status": "error", "message": "Ingresá un DNI para buscar."}), 400
+
+    if not re.match(r'^\d{8}$', dni):
+        return jsonify({"status": "error", "message": "El DNI debe tener exactamente 8 dígitos numéricos."}), 400
+
+    usuario = Usuario.query.filter_by(dni=dni).first()
+    if not usuario:
+        return jsonify({"status": "error", "message": "No existe un usuario con ese DNI."}), 404
+
+    admin_profile = Administrador.query.filter_by(usuario_id=usuario.id).first()
+    empleado_profile = Empleado.query.filter_by(usuario_id=usuario.id).first()
+    if admin_profile or empleado_profile:
+        return jsonify({"status": "error", "message": "No existe un usuario con ese DNI."}), 404
+
+    if usuario.activo:
+        return jsonify({"status": "error", "message": "El usuario ya está activo."}), 400
+
+    try:
+        usuario.activo = True
+        db.session.commit()
+        return jsonify({"status": "success", "message": "Usuario reactivado exitosamente."}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": f"Error al reactivar: {str(e)}"}), 500
+
+
+# -----------------------------------------------------------------
+# ENDPOINT: BUSCAR USUARIO PARA CERTIFICADO (HU #33)
+# -----------------------------------------------------------------
+@auth_bp.route('/empleado/buscar-usuario-certificado', methods=['POST'])
+def buscar_usuario_certificado():
+    from models import Certificado
+    datos = request.get_json()
+    dni = datos.get('dni', '').strip()
+
+    if not dni:
+        return jsonify({"status": "error", "message": "Ingresá un DNI para buscar."}), 400
+
+    if not re.match(r'^\d{8}$', str(dni)):
+        return jsonify({"status": "error", "message": "El DNI debe tener exactamente 8 dígitos numéricos."}), 400
+
+    usuario = Usuario.query.filter_by(dni=str(dni)).first()
+    if not usuario:
+        return jsonify({"status": "error", "message": "El DNI ingresado no pertenece a un usuario del sistema."}), 404
+
+    admin_profile = Administrador.query.filter_by(usuario_id=usuario.id).first()
+    empleado_profile = Empleado.query.filter_by(usuario_id=usuario.id).first()
+    if admin_profile or empleado_profile:
+        return jsonify({"status": "error", "message": "El DNI ingresado no pertenece a un usuario del sistema."}), 404
+
+    certificado_vigente = Certificado.query.filter_by(usuario_id=usuario.id, estado='vigente').first()
+    if certificado_vigente:
+        return jsonify({"status": "error", "message": "El usuario ya cuenta con un certificado vigente."}), 400
+
+    return jsonify({
+        "status": "encontrado",
+        "usuario": {"nombre": usuario.nombre, "apellido": usuario.apellido}
+    }), 200
+
+
+# -----------------------------------------------------------------
+# ENDPOINT: REGISTRAR CERTIFICADO (HU #33)
+# -----------------------------------------------------------------
+@auth_bp.route('/empleado/registrar-certificado', methods=['POST'])
+def registrar_certificado():
+    from models import Certificado
+    datos = request.get_json()
+
+    dni = datos.get('dni', '').strip()
+    fecha_emision_str = datos.get('fecha_emision')
+    fecha_vencimiento_str = datos.get('fecha_vencimiento')
+
+    if not fecha_emision_str or not fecha_vencimiento_str:
+        return jsonify({"status": "error", "message": "Las fechas son obligatorias."}), 400
+
+    usuario = Usuario.query.filter_by(dni=str(dni)).first()
+    if not usuario:
+        return jsonify({"status": "error", "message": "El DNI ingresado no pertenece a un usuario del sistema."}), 404
+
+    hoy = datetime.today().date()
+
+    try:
+        fecha_emision = datetime.strptime(fecha_emision_str, '%Y-%m-%d').date()
+        fecha_vencimiento = datetime.strptime(fecha_vencimiento_str, '%Y-%m-%d').date()
+    except ValueError:
+        return jsonify({"status": "error", "message": "Formato de fecha inválido."}), 400
+
+    if fecha_vencimiento < fecha_emision:
+        return jsonify({"status": "error", "message": "La fecha de vencimiento no puede ser anterior a la fecha de emisión."}), 400
+
+    if fecha_vencimiento < hoy:
+        return jsonify({"status": "error", "message": "El certificado está vencido, no se puede realizar la carga."}), 400
+
+    try:
+        nuevo_certificado = Certificado(
+            usuario_id=usuario.id,
+            fecha_emision=fecha_emision,
+            fecha_vencimiento=fecha_vencimiento,
+            estado='vigente'
+        )
+        db.session.add(nuevo_certificado)
+        db.session.commit()
+        return jsonify({"status": "success", "message": "Certificado registrado correctamente."}), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": f"Error al registrar certificado: {str(e)}"}), 500
+
+
+# -----------------------------------------------------------------
+# ENDPOINT: SOLICITAR RECUPERACIÓN DE CONTRASEÑA (HU #32)
+# -----------------------------------------------------------------
+@auth_bp.route('/recuperar-contrasena', methods=['POST'])
+def recuperar_contrasena():
+    datos = request.get_json()
+    email = datos.get('email', '').strip()
+
+    if not email:
+        return jsonify({"status": "error", "message": "El correo electrónico es obligatorio."}), 400
+
+    usuario = Usuario.query.filter_by(email=email).first()
+    if not usuario:
+        return jsonify({"status": "error", "message": "El correo electrónico ingresado no corresponde a un usuario registrado."}), 404
+
+    token = generar_token_recuperacion(email)
+    link = f"http://localhost:5173/reset-password?token={token}"
+
+    print(f"[SIMULACIÓN MAIL] Link de recuperación para {email}: {link}")
+
+    return jsonify({
+        "status": "success",
+        "message": "Usá el link a continuación para restablecer tu contraseña:",
+        "link_demo": link
+    }), 200
+
+
+# -----------------------------------------------------------------
+# ENDPOINT: VERIFICAR TOKEN DE RECUPERACIÓN (HU #32)
+# -----------------------------------------------------------------
+@auth_bp.route('/verificar-token-recuperacion', methods=['POST'])
+def verificar_token_recuperacion_endpoint():
+    datos = request.get_json()
+    token = datos.get('token', '').strip()
+
+    if not token:
+        return jsonify({"status": "error", "message": "El enlace de recuperación ha expirado."}), 400
+
+    email = verificar_token_recuperacion(token)
+    if not email:
+        return jsonify({"status": "error", "message": "El enlace de recuperación ha expirado."}), 400
+
+    usuario = Usuario.query.filter_by(email=email, token_recuperacion=token).first()
+    if not usuario:
+        return jsonify({"status": "error", "message": "El enlace de recuperación ha expirado."}), 400
+    if usuario.token_recuperacion_usado:
+        return jsonify({"status": "error", "message": "El enlace de recuperación ya fue utilizado."}), 400
+
+    return jsonify({"status": "success"}), 200
+
+
+# -----------------------------------------------------------------
+# ENDPOINT: RESTABLECER CONTRASEÑA (HU #32)
+# -----------------------------------------------------------------
+@auth_bp.route('/restablecer-contrasena', methods=['POST'])
+def restablecer_contrasena():
+    datos = request.get_json()
+    token = datos.get('token', '').strip()
+    nueva_password = datos.get('nueva_password', '').strip()
+
+    if not token:
+        return jsonify({"status": "error", "message": "Token inválido."}), 400
+
+    email = verificar_token_recuperacion(token)
+    if not email:
+        return jsonify({"status": "error", "message": "El enlace de recuperación ha expirado."}), 400
+
+    usuario = Usuario.query.filter_by(email=email, token_recuperacion=token).first()
+    if not usuario:
+        return jsonify({"status": "error", "message": "El enlace de recuperación ha expirado."}), 400
+    if usuario.token_recuperacion_usado:
+        return jsonify({"status": "error", "message": "El enlace de recuperación ya fue utilizado."}), 400
+
+    if len(nueva_password) < 6:
+        return jsonify({"status": "error", "message": "La contraseña debe tener al menos 6 caracteres."}), 400
+
+    if not re.search(r"[^a-zA-Z0-9]", nueva_password):
+        return jsonify({"status": "error", "message": "La contraseña debe incluir al menos un carácter especial."}), 400
+
+    try:
+        usuario.password_hash = generate_password_hash(nueva_password)
+        usuario.token_recuperacion_usado = True
+        db.session.commit()
+        return jsonify({"status": "success", "message": "Contraseña restablecida exitosamente."}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": f"Error al restablecer: {str(e)}"}), 500
+
+
+# -----------------------------------------------------------------
+# ENDPOINT: GENERAR CONFIRMACIÓN DE EMAIL (HU #36)
+# -----------------------------------------------------------------
+@auth_bp.route('/generar-confirmacion-email', methods=['POST'])
+def generar_confirmacion_email():
+    datos = request.get_json()
+    email = datos.get('email', '').strip()
+
+    if not email:
+        return jsonify({"status": "error", "message": "Email inválido."}), 400
+
+    token = serializer.dumps(email, salt="confirmacion-email")
+    link = f"http://localhost:5173/confirmar-email-registro?token={token}"
+
+    print(f"[SIMULACIÓN MAIL] Link de confirmación para {email}: {link}")
+
+    return jsonify({
+        "status": "success",
+        "link_demo": link
+    }), 200
+
+
+# -----------------------------------------------------------------
+# ENDPOINT: CONFIRMAR EMAIL DE REGISTRO (HU #36)
+# -----------------------------------------------------------------
+@auth_bp.route('/confirmar-email-registro', methods=['POST'])
+def confirmar_email_registro():
+    datos = request.get_json()
+    token = datos.get('token', '').strip()
+
+    if not token:
+        return jsonify({"status": "error", "message": "El enlace de confirmación ha expirado."}), 400
+
+    try:
+        email = serializer.loads(token, salt="confirmacion-email", max_age=3600)
+    except SignatureExpired:
+        return jsonify({"status": "error", "message": "El enlace de confirmación ha expirado."}), 400
+    except BadSignature:
+        return jsonify({"status": "error", "message": "El enlace de confirmación ha expirado."}), 400
+
+    usuario = Usuario.query.filter_by(email=email).first()
+    if not usuario:
+        return jsonify({"status": "error", "message": "Usuario no encontrado."}), 404
+
+    if usuario.email_confirmado:
+        return jsonify({"status": "error", "message": "La cuenta ya se encuentra confirmada."}), 400
+
+    try:
+        usuario.email_confirmado = True
+        db.session.commit()
+        return jsonify({"status": "success", "message": "Cuenta confirmada correctamente."}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": f"Error al confirmar: {str(e)}"}), 500

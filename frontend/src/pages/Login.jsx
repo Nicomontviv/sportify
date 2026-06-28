@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Login = ({ loginEmail, setLoginEmail, loginPassword, setLoginPassword, loginError, handleLogin ,alCambiarVista}) => {
+const Login = ({ loginEmail, setLoginEmail, loginPassword, setLoginPassword, loginError, handleLogin, alCambiarVista, alRecuperarContrasena }) => {
   return (
     <div className="flex min-h-screen items-center justify-center bg-sportify-light px-4">
       <div className="w-full max-w-md space-y-6 rounded-2xl border border-gray-200 bg-sportify-white p-8 shadow-md">
@@ -19,20 +19,23 @@ const Login = ({ loginEmail, setLoginEmail, loginPassword, setLoginPassword, log
             <input type="password" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} className="mt-1 w-full rounded-xl border border-gray-300 bg-sportify-light p-2.5 text-sm outline-none focus:border-sportify-blue" placeholder="••••••••" />
           </div>
           <button type="submit" className="w-full rounded-xl bg-sportify-blue p-3 text-sm font-bold text-white hover:bg-sportify-deepSea transition-colors shadow-sm">Ingresar</button>
-          
         </form>
-       <div className="mt-4 text-center">
-  <p className="text-sm text-gray-600">
-    ¿No tenés cuenta?{' '}
-    <button type="button" onClick={alCambiarVista} className="text-[#1E90FF] hover:underline font-medium">
-      Registrate acá
-    </button>
-  </p>
-</div>
+        <div className="mt-4 text-center space-y-2">
+          <p className="text-sm text-gray-600">
+            ¿No tenés cuenta?{' '}
+            <button type="button" onClick={alCambiarVista} className="text-[#1E90FF] hover:underline font-medium">
+              Registrate acá
+            </button>
+          </p>
+          <p className="text-sm text-gray-600">
+            ¿Olvidaste tu contraseña?{' '}
+            <button type="button" onClick={alRecuperarContrasena} className="text-[#1E90FF] hover:underline font-medium">
+              Recuperala acá
+            </button>
+          </p>
+        </div>
       </div>
-      
     </div>
-    
   );
 };
 

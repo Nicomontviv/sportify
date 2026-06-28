@@ -5,18 +5,23 @@ import Registro from './pages/Registro';
 import AdminActividades from './pages/AdminActividades';
 import AdminTurnos from './pages/AdminTurnos';
 import InicioCliente from './pages/InicioCliente'; 
-import InicioEmpleado from './pages/InicioEmpleado'; // NUEVO: vista del empleado
+import InicioEmpleado from './pages/InicioEmpleado';
+import RecuperarContrasena from './pages/RecuperarContrasena';
+import RestablecerContrasena from './pages/RestablecerContrasena';
+import ConfirmarEmailRegistro from './pages/ConfirmarEmailRegistro';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userSession, setUserSession] = useState(null);
   
-  // Controla si el usuario ve el login o el registro antes de loguearse
-  const [vista, setVista] = useState('login'); 
+  const tokenEnUrl = new URLSearchParams(window.location.search).get('token');
+  const pathUrl = window.location.pathname;
+  const [vista, setVista] = useState(
+    pathUrl === '/confirmar-email-registro' && tokenEnUrl ? 'confirmar-email' :
+    tokenEnUrl ? 'restablecer' :
+    'login'
+  );
 
-  // Controla qué pantalla ve el admin después del login
-  // Valores posibles: 'actividades' | 'turnos'
-  // En el futuro se pueden agregar más: 'informes', 'empleados', etc.
   const [vistaAdmin, setVistaAdmin] = useState('actividades');
 
   const [loginEmail, setLoginEmail] = useState('');
@@ -119,14 +124,20 @@ function App() {
             loginPassword={loginPassword} setLoginPassword={setLoginPassword}
             loginError={loginError} handleLogin={handleLogin}
             alCambiarVista={() => setVista('registro')}
+            alRecuperarContrasena={() => setVista('recuperar')}
           />
-        ) : (
+        ) : vista === 'registro' ? (
           <Registro 
             alCambiarVista={() => setVista('login')}
           />
-        )
+        ) : vista === 'recuperar' ? (
+          <RecuperarContrasena alVolver={() => setVista('login')} />
+        ) : vista === 'restablecer' ? (
+          <RestablecerContrasena />
+        ) : vista === 'confirmar-email' ? (
+          <ConfirmarEmailRegistro />
+        ) : null
       ) : (
-        // SI ESTÁ LOGUEADO: si es admin, mostramos una de las pantallas según vistaAdmin
         userSession?.administrador ? (
           vistaAdmin === 'actividades' ? (
             <AdminActividades 
@@ -148,7 +159,6 @@ function App() {
             />
           )
         ) : userSession?.empleado ? (
-          // NUEVO: Si es empleado, mostramos el panel del empleado
           <InicioEmpleado
             userSession={userSession}
             setIsLoggedIn={setIsLoggedIn}

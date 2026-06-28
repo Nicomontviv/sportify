@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
-from models import db, Reserva, Deposito, Empleado, Usuario, Administrador, Clase, Turno, Actividad, Credito
+from models import db, Reserva, Deposito, Empleado, Usuario, Administrador, Clase, Turno, Actividad, Credito, Certificado
 import re
 
 pagos_bp = Blueprint('pagos', __name__)
@@ -472,6 +472,11 @@ def reservar_y_pagar():
     usuario = db.session.get(Usuario, user_id)
     if not usuario:
         return jsonify({"status": "error", "message": "Usuario no encontrado."}), 404
+    
+    # REGLA DE NEGOCIO: El usuario debe tener un certificado de aptitud física vigente
+    certificado = Certificado.query.filter_by(usuario_id=user_id, estado='vigente').first()
+    if not certificado:
+        return jsonify({"status": "error", "message": "No podés reservar sin un certificado de aptitud física vigente."}), 400
 
     resultados = []
     total_cobrado = 0

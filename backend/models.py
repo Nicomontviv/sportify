@@ -16,6 +16,9 @@ class Usuario(db.Model):
     fecha_nacimiento = db.Column(db.Date, nullable=False)
     activo = db.Column(db.Boolean, nullable=False, default=True)
     fecha_alta = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    token_recuperacion = db.Column(db.String(255), nullable=True)
+    token_recuperacion_usado = db.Column(db.Boolean, nullable=False, default=False)
+    email_confirmado = db.Column(db.Boolean, nullable=False, default=False)
 
     # Relación inversa para acceder a los créditos mensuales del usuario
     creditos = db.relationship('Credito', backref='usuario', lazy=True)
@@ -170,3 +173,17 @@ class ListaEspera(db.Model):
     # Estados de la lista de espera
     estado = db.Column(db.Enum('en_espera', 'notificado', 'confirmado', 'expirado', 'cancelado'), default='en_espera', nullable=False)
     fecha_notificacion = db.Column(db.DateTime, nullable=True)
+
+
+# AGREGADO: Modelo Certificado (aptitud física del usuario)
+# Requerido para HU #33 - Registro de certificado de aptitud física
+class Certificado(db.Model):
+    __tablename__ = 'certificado'
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id', onupdate='CASCADE', ondelete='RESTRICT'), nullable=False)
+    fecha_emision = db.Column(db.Date, nullable=True)
+    fecha_vencimiento = db.Column(db.Date, nullable=False)
+    estado = db.Column(db.Enum('vigente', 'vencido', 'pendiente'), nullable=False, default='pendiente')
+
+    usuario = db.relationship('Usuario', backref='certificados', lazy=True)
