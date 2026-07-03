@@ -1,7 +1,7 @@
 import os
 from datetime import date, datetime, time, timedelta
 from app import app, db
-from models import Usuario, Administrador, Actividad, Turno, Reserva, Clase, Empleado, Deposito, Certificado
+from models import Usuario, Administrador, Actividad, Turno, Reserva, Clase, Empleado, Deposito, Certificado   
 from helpers.turnos_helper import generar_clases_para_mes
 # Seeds para la demo - Junio 2026
 def cargar_datos_base():
@@ -157,6 +157,35 @@ def cargar_datos_base():
         db.session.add(gonzalo_usuario)
         db.session.commit()
         print("✔️ Usuario Casual creado: gonzalo@sportify.com / gonzalo123! (sin reservas)")
+
+    # Pedro Garcia — usuario dado de baja para demo HU #62
+    print("🙋 [2.95/4] Creando usuario dado de baja (HU reactivar usuario)...")
+    with app.app_context():
+        from werkzeug.security import generate_password_hash
+
+        baja_email = "baja@sportify.com"
+
+        baja_viejo = Usuario.query.filter_by(email=baja_email).first()
+        if not baja_viejo:
+            baja_viejo = Usuario.query.filter_by(dni="11122233").first()
+        if baja_viejo:
+            Reserva.query.filter_by(usuario_id=baja_viejo.id).delete()
+            db.session.delete(baja_viejo)
+            db.session.commit()
+            print("🧹 Viejo usuario dado de baja eliminado.")
+
+        baja_usuario = Usuario(
+            nombre="Pedro",
+            apellido="Garcia",
+            dni="11122233",
+            email=baja_email,
+            password_hash=generate_password_hash("pedro123!"),
+            fecha_nacimiento=date(1990, 5, 15),
+            activo=False
+        )
+        db.session.add(baja_usuario)
+        db.session.commit()
+        print("✔️ Usuario dado de baja creado: baja@sportify.com / pedro123! (DNI 11122233) - activo=False")
 
     print("🏋️ [3/4] Forzando activación de disciplinas base...")
     with app.app_context():

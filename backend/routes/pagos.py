@@ -605,6 +605,11 @@ def reservar_presencial():
     usuario = db.session.get(Usuario, usuario_id)
     if not usuario:
         return jsonify({"status": "error", "message": "Usuario no encontrado."}), 404
+    
+    # REGLA DE NEGOCIO: El usuario debe tener un certificado de aptitud física vigente
+    certificado = Certificado.query.filter_by(usuario_id=usuario_id, estado='vigente').first()
+    if not certificado:
+        return jsonify({"status": "error", "message": "El usuario no tiene un certificado de aptitud física vigente."}), 400
 
     resultados = []
     total_cobrado = 0
