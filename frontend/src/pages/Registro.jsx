@@ -13,7 +13,9 @@ const Registro = ({ alCambiarVista }) => {
   const [mensaje, setMensaje] = useState({ tipo: '', texto: '' });
   const [cargando, setCargando] = useState(false);
   const [linkConfirmacion, setLinkConfirmacion] = useState('');
+  const [tokenConfirmacion, setTokenConfirmacion] = useState('');
   const [mostrarMail, setMostrarMail] = useState(false);
+  const [mensajeConfirmacion, setMensajeConfirmacion] = useState({ tipo: '', texto: '' });
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -47,6 +49,8 @@ const Registro = ({ alCambiarVista }) => {
         });
         const dataConfirmacion = await resConfirmacion.json();
         setLinkConfirmacion(dataConfirmacion.link_demo);
+        const token = dataConfirmacion.link_demo.split('token=')[1];
+        setTokenConfirmacion(token);
         setMensaje({ tipo: 'success', texto: '¡Usuario registrado con éxito en Sportify! Te enviamos un correo para confirmar tu email.' });
         setFormData({ nombre: '', apellido: '', dni: '', email: '', password: '', fecha_nacimiento: '' });
       } else {
@@ -59,18 +63,35 @@ const Registro = ({ alCambiarVista }) => {
     }
   };
 
+  const handleConfirmarEmail = async () => {
+    setMensajeConfirmacion({ tipo: '', texto: '' });
+    try {
+      const response = await fetch('http://127.0.0.1:5000/api/confirmar-email-registro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: tokenConfirmacion })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setMensajeConfirmacion({ tipo: 'success', texto: data.message });
+      } else {
+        setMensajeConfirmacion({ tipo: 'error', texto: data.message });
+      }
+    } catch {
+      setMensajeConfirmacion({ tipo: 'error', texto: 'No se pudo conectar con el servidor.' });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center p-4">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
 
-        {!mostrarMail && (
+        {!mostrarMail && !linkConfirmacion && (
           <div className="text-center mb-6">
             <h2 className="text-3xl font-bold text-[#212121]">
               Crear Cuenta en <span className="text-[#1E90FF]">Sportify</span>
             </h2>
-            {!linkConfirmacion && (
-              <p className="text-gray-500 text-sm mt-1">Registrate para reservar tus turnos de fútbol, básquet, vóley y pádel</p>
-            )}
+            <p className="text-gray-500 text-sm mt-1">Registrate para reservar tus turnos de fútbol, básquet, vóley y pádel</p>
           </div>
         )}
 
@@ -91,30 +112,53 @@ const Registro = ({ alCambiarVista }) => {
         )}
 
         {mostrarMail && linkConfirmacion && (
-          <div className="border rounded-xl overflow-hidden mb-4">
-            <div style={{backgroundColor: '#1a3a2a', padding: '20px', textAlign: 'center'}}>
-              <h2 style={{color: 'white', margin: 0, fontSize: '20px'}}>Sportify</h2>
+          <>
+            <div className="flex justify-between items-center border-b pb-4 mb-6">
+              <h1 className="text-3xl font-bold text-[#212121]">
+                Confirmá tu <span className="text-[#1E90FF]">cuenta</span>
+              </h1>
+              <button onClick={alCambiarVista} className="bg-[#008080] hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition">
+                Volver 
+              </button>
             </div>
-            <div style={{padding: '24px'}}>
-              <h3 style={{marginTop: 0}}>Confirmá tu cuenta</h3>
-              <p>Gracias por registrarte en Sportify. Hacé click en el siguiente botón para confirmar tu email:</p>
-              <a href={linkConfirmacion} style={{
-                backgroundColor: '#1E90FF',
-                color: 'white',
-                padding: '12px 24px',
-                textDecoration: 'none',
-                borderRadius: '5px',
-                display: 'inline-block',
-                margin: '10px 0'
-              }}>
-                Confirmar email
-              </a>
-              <p style={{color: 'gray', fontSize: '12px'}}>Este link expira en 1 hora. Si no te registraste, ignorá este mail.</p>
+            <div className="border rounded-xl overflow-hidden mb-4">
+              <div style={{backgroundColor: '#1a3a2a', padding: '20px', textAlign: 'center'}}>
+                <h2 style={{color: 'white', margin: 0, fontSize: '20px'}}>Sportify</h2>
+              </div>
+              <div style={{padding: '24px'}}>
+                <h3 style={{marginTop: 0}}>Confirmá tu cuenta</h3>
+                <p>Gracias por registrarte en Sportify. Hacé click en el siguiente botón para confirmar tu email:</p>
+                <button
+                  onClick={handleConfirmarEmail}
+                  style={{
+                    backgroundColor: '#1E90FF',
+                    color: 'white',
+                    padding: '12px 24px',
+                    border: 'none',
+                    borderRadius: '5px',
+                    cursor: 'pointer',
+                    display: 'inline-block',
+                    margin: '10px 0',
+                    fontWeight: 'bold'
+                  }}>
+                  Confirmar email
+                </button>
+
+                {mensajeConfirmacion.texto && (
+                  <div className={`mt-3 p-3 rounded text-sm font-medium ${
+                    mensajeConfirmacion.tipo === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                    {mensajeConfirmacion.tipo === 'success' ? '✅' : '⚠️'} {mensajeConfirmacion.texto}
+                  </div>
+                )}
+
+                <p style={{color: 'gray', fontSize: '12px'}}>Este link expira en 1 hora. Si no te registraste, ignorá este mail.</p>
+              </div>
+              <div style={{backgroundColor: '#f5f5f5', padding: '10px', textAlign: 'center', fontSize: '12px', color: 'gray'}}>
+                Sportify — Este es un correo automático, por favor no respondas.
+              </div>
             </div>
-            <div style={{backgroundColor: '#f5f5f5', padding: '10px', textAlign: 'center', fontSize: '12px', color: 'gray'}}>
-              Sportify — Este es un correo automático, por favor no respondas.
-            </div>
-          </div>
+          </>
         )}
 
         {!linkConfirmacion && (
