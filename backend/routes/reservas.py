@@ -103,11 +103,25 @@ def cancelar_reserva(id):
             reserva.monto_pagado = 0
             senia_devuelta = True
     else:
-        # Los usuarios abonados acumulan las cancelaciones por mes
-        credito_usuario = Credito.query.filter(Credito.usuario_id == user_id, Credito.anio == ahora.year, Credito.mes == ahora.month).first()
+        # REGLA DE NEGOCIO: abonado cancela — se evalúa anticipación para determinar consecuencia
+        limite_cancelacion_48h = inicio_clase - timedelta(hours=48)
+        
+        credito_usuario = Credito.query.filter(
+            Credito.usuario_id == user_id,
+            Credito.anio == ahora.year,
+            Credito.mes == ahora.month
+        ).first()
         if not credito_usuario:
             return jsonify({"status": "error", "message": "Crédito del abonado no encontrado"}), 404
-        credito_usuario.cancelaciones += 1
+
+        if ahora < limite_cancelacion_48h:
+            # Más de 48hs de anticipación → genera clase a favor
+            credito_usuario.clases_a_favor += 1
+        else:
+            # Menos de 48hs → acumula cancelación y penaliza si llega a 3
+            credito_usuario.cancelaciones += 1
+            if credito_usuario.cancelaciones >= 3:
+                credito_usuario.descuento_activo = 0
     try:
         reserva.estado='cancelada_usuario'
         #clase.cupo_disponible += 1  //dejo esto comentado por las dudas 
@@ -125,7 +139,7 @@ def cancelar_reserva(id):
     
 
 @reservas_bp.route('', methods=['GET'])
-def ver_reservas():
+def ver_reservas():     
     user_id = request.args.get('usuario_id', type=int)
     if not user_id:
         return jsonify({"status": "error", "message": "Parámetro usuario_id requerido"}), 400

@@ -53,6 +53,7 @@ class Credito(db.Model):
     fecha_pago = db.Column(db.DateTime, nullable=True)
     cancelaciones = db.Column(db.Integer, nullable=False, default=0)
     descuento_activo = db.Column(db.Boolean, nullable=False, default=True)
+    clases_a_favor = db.Column(db.Integer, nullable=False, default=0)
 
 
 # NUEVO: Modelo Administrador (Especialización de Usuario)
