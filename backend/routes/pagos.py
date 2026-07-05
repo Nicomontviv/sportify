@@ -559,6 +559,52 @@ def reservar_y_pagar():
 
         db.session.commit()
 
+        # REGLA DE NEGOCIO: verificar si el usuario se convierte en abonado
+        ahora = datetime.now()
+        for item in clases:
+            clase_id = item.get('clase_id')
+            clase = db.session.get(Clase, clase_id)
+            turno = db.session.get(Turno, clase.turno_id)
+            
+            reservas_mismo_turno = Reserva.query.join(Clase).filter(
+                Reserva.usuario_id == user_id,
+                Clase.turno_id == turno.id,
+                db.extract('month', Clase.fecha) == ahora.month,
+                db.extract('year', Clase.fecha) == ahora.year,
+                Reserva.estado.in_(['confirmada', 'pendiente_pago'])
+            ).count()
+
+            if reservas_mismo_turno >= 3:
+                credito_existente = Credito.query.filter_by(
+                    usuario_id=user_id, mes=ahora.month, anio=ahora.year
+                ).first()
+                if not credito_existente:
+                    nuevo_credito = Credito(
+                        usuario_id=user_id,
+                        mes=ahora.month,
+                        anio=ahora.year,
+                        pagado=True,
+                        descuento_activo=True
+                    )
+                    db.session.add(nuevo_credito)
+                    
+                    # Aplicar descuento retroactivo a las reservas del mismo turno
+                    reservas_a_actualizar = Reserva.query.join(Clase).filter(
+                        Reserva.usuario_id == user_id,
+                        Clase.turno_id == turno.id,
+                        db.extract('month', Clase.fecha) == ahora.month,
+                        db.extract('year', Clase.fecha) == ahora.year,
+                        Reserva.estado.in_(['confirmada', 'pendiente_pago'])
+                    ).all()
+                    
+                    for r in reservas_a_actualizar:
+                        monto_con_descuento = round(float(r.monto_total) * 0.80, 2)
+                        r.monto_total = monto_con_descuento
+                        r.monto_pagado = monto_con_descuento
+                        r.estado = 'confirmada'
+                    
+                    db.session.commit()
+
         if len(clases) == 1 and clases[0]['tipo_pago'] == 'senia':
             mensaje = "Reserva confirmada. Seña pagada exitosamente."
         elif len(clases) == 1:

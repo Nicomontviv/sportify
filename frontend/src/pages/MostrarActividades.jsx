@@ -23,6 +23,7 @@ const MostrarActividades = ({ userSession, onVolver }) => {
   });
   const [erroresTarjeta, setErroresTarjeta] = useState({});
 
+
   useEffect(() => {
     const cargarActividadesDisponibles = async () => {
       try {
@@ -62,21 +63,58 @@ const MostrarActividades = ({ userSession, onVolver }) => {
       console.error("Error al mostrar las clases", error.response?.data || error.message);
     }
   };
-
   const handleSeleccionPago = (claseId, tipoPago) => {
     setMensajePago('');
     setPagosSeleccionados((prev) => {
+      let nuevo;
       if (prev[claseId] === tipoPago) {
-        const nuevo = { ...prev };
+        nuevo = { ...prev };
         delete nuevo[claseId];
-        return nuevo;
+      } else {
+        nuevo = { ...prev, [claseId]: tipoPago };
       }
-      return { ...prev, [claseId]: tipoPago };
+
+      const conteoPorTurno = {};
+      Object.keys(nuevo).forEach((id) => {
+        const clase = clasesDeActividadSeleccionada.find(c => c.id === parseInt(id));
+        if (clase) {
+          conteoPorTurno[clase.turno_id] = (conteoPorTurno[clase.turno_id] || 0) + 1;
+        }
+      });
+      const abonadoTrasSeleccion = Object.values(conteoPorTurno).some(count => count >= 3);
+
+      if (abonadoTrasSeleccion) {
+        Object.keys(nuevo).forEach((id) => {
+          if (nuevo[id] === 'senia') nuevo[id] = 'total';
+        });
+      }
+
+      return nuevo;
     });
   };
 
+  const contarClasesPorTurno = () => {
+    const conteo = {};
+    Object.keys(pagosSeleccionados).forEach(claseId => {
+      const clase = clasesDeActividadSeleccionada.find(c => c.id === parseInt(claseId));
+      if (clase) {
+        conteo[clase.turno_id] = (conteo[clase.turno_id] || 0) + 1;
+      }
+    });
+    return conteo;
+  };
+
+  const esAbonado = Object.values(contarClasesPorTurno()).some(count => count >= 3);
+
   const calcularTotal = () => {
     const precio = actividadSeleccionada.precio_base || 0;
+    const precioConDescuento = precio * 0.80;
+    const cantidadClases = Object.keys(pagosSeleccionados).length;
+
+    if (esAbonado) {
+      return precioConDescuento * cantidadClases;
+    }
+
     return Object.values(pagosSeleccionados).reduce((total, tipo) => {
       return total + (tipo === 'senia' ? precio * 0.5 : precio);
     }, 0);
@@ -84,6 +122,9 @@ const MostrarActividades = ({ userSession, onVolver }) => {
 
   const clasesFiltradas = clasesDeActividadSeleccionada.filter(c => !reservasActivasIds.has(c.id));
   const haySeleccion = Object.keys(pagosSeleccionados).length > 0;
+
+
+
 
   const handleTarjetaChange = (e) => {
     const { name, value } = e.target;
@@ -158,12 +199,14 @@ const MostrarActividades = ({ userSession, onVolver }) => {
         setPagosSeleccionados({});
         setTarjeta({ numero_tarjeta: '', titular: '', vencimiento: '', cvv: '' });
         setMostrarFormulario(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         mostrarClases(actividadSeleccionada);
         cargarMisReservas();
       }
     } catch (error) {
       setMensajePago(error.response?.data?.message || 'No se pudo realizar el pago, por favor intentá nuevamente.');
       setTipoMensajePago('error');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setProcesando(false);
     }
@@ -182,15 +225,15 @@ const MostrarActividades = ({ userSession, onVolver }) => {
   // --- NUEVA FUNCIÓN: Unirse a la Lista de Espera ---
   const handleUnirseListaEspera = async (claseId) => {
     try {
-      const response = await axios.post('http://127.0.0.1:5000/api/lista-espera', 
+      const response = await axios.post('http://127.0.0.1:5000/api/lista-espera',
         { clase_id: claseId },
         { headers: { 'X-User-Id': userSession.id } }
       );
-      
+
       // Mostrar éxito y limpiar posibles mensajes de error previos
       setMensajePago(response.data.message);
       setTipoMensajePago('success');
-      
+
     } catch (error) {
       if (error.response && error.response.status === 400) {
         setMensajePago(error.response.data.message);
@@ -223,6 +266,7 @@ const MostrarActividades = ({ userSession, onVolver }) => {
 
             <p className="text-gray-600 mb-6">
               Seleccioná una o varias clases y elegí si querés pagar la seña (50%) o el total.
+              <p className="text-black-600 font-semibold" > Si reservás 3 o más clases del mismo horario en el mes, te convertís en abonado y obtenés un 20% de descuento sobre el valor total de las clases seleccionadas.</p>
             </p>
 
             {mensajePago && (
@@ -253,34 +297,58 @@ const MostrarActividades = ({ userSession, onVolver }) => {
                       <p className="text-gray-500 text-sm">{clase.horario_inicio} - {clase.horario_fin}</p>
                       <p className="text-sm text-[#008080]">Cupos disponibles: {clase.cupo_disponible}</p>
                       <p className="text-sm text-gray-500 mt-1">
-                        Precio: <span className="font-medium">${actividadSeleccionada.precio_base?.toLocaleString('es-AR')}</span>
+                        Precio: {esAbonado ? (
+                          <>
+                            <span className="line-through" style={{color: '#212121'}}>${actividadSeleccionada.precio_base?.toLocaleString('es-AR')}</span>
+                            {' '}
+                            <span className="font-semibold" style={{color: '#32CD32'}}>${(actividadSeleccionada.precio_base * 0.80).toLocaleString('es-AR')}</span>
+                          </>
+                        ) : (
+                          <span className="font-medium">${actividadSeleccionada.precio_base?.toLocaleString('es-AR')}</span>
+                        )}
                       </p>
                     </div>
 
                     {clase.cupo_disponible > 0 ? (
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => handleSeleccionPago(clase.id, 'senia')}
-                          className={`py-2 px-4 rounded font-medium border transition ${
-                            pagosSeleccionados[clase.id] === 'senia'
-                              ? 'bg-yellow-400 border-yellow-500 text-white'
-                              : 'bg-white border-yellow-400 text-yellow-600 hover:bg-yellow-50'
-                          }`}
-                        >
-                          Pagar seña (50%)<br />
-                          <span className="text-sm">${(actividadSeleccionada.precio_base * 0.5).toLocaleString('es-AR')}</span>
-                        </button>
-                        <button
-                          onClick={() => handleSeleccionPago(clase.id, 'total')}
-                          className={`py-2 px-4 rounded font-medium border transition ${
-                            pagosSeleccionados[clase.id] === 'total'
-                              ? 'bg-[#1E90FF] border-blue-600 text-white'
-                              : 'bg-white border-[#1E90FF] text-[#1E90FF] hover:bg-blue-50'
-                          }`}
-                        >
-                          Pagar total (100%)<br />
-                          <span className="text-sm">${actividadSeleccionada.precio_base?.toLocaleString('es-AR')}</span>
-                        </button>
+                        {esAbonado ? (
+                          <button
+                            onClick={() => handleSeleccionPago(clase.id, 'total')}
+                            className={`py-2 px-4 rounded font-medium border transition ${
+                              pagosSeleccionados[clase.id]
+                                ? 'bg-[#1E90FF] border-blue-600 text-white'
+                                : 'bg-white border-[#1E90FF] text-[#1E90FF] hover:bg-blue-50'
+                            }`}
+                          >
+                            Reservar con descuento<br />
+                            <span className="text-sm">${(actividadSeleccionada.precio_base * 0.80).toLocaleString('es-AR')}</span>
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleSeleccionPago(clase.id, 'senia')}
+                              className={`py-2 px-4 rounded font-medium border transition ${
+                                pagosSeleccionados[clase.id] === 'senia'
+                                  ? 'bg-yellow-400 border-yellow-500 text-white'
+                                  : 'bg-white border-yellow-400 text-yellow-600 hover:bg-yellow-50'
+                              }`}
+                            >
+                              Pagar seña (50%)<br />
+                              <span className="text-sm">${(actividadSeleccionada.precio_base * 0.5).toLocaleString('es-AR')}</span>
+                            </button>
+                            <button
+                              onClick={() => handleSeleccionPago(clase.id, 'total')}
+                              className={`py-2 px-4 rounded font-medium border transition ${
+                                pagosSeleccionados[clase.id] === 'total'
+                                  ? 'bg-[#1E90FF] border-blue-600 text-white'
+                                  : 'bg-white border-[#1E90FF] text-[#1E90FF] hover:bg-blue-50'
+                              }`}
+                            >
+                              Pagar total (100%)<br />
+                              <span className="text-sm">${actividadSeleccionada.precio_base?.toLocaleString('es-AR')}</span>
+                            </button>
+                          </>
+                        )}
                       </div>
                     ) : (
                       /* --- REEMPLAZO DEL TEXTO "Sin Cupos" POR EL BOTÓN DE LISTA DE ESPERA --- */
@@ -305,6 +373,7 @@ const MostrarActividades = ({ userSession, onVolver }) => {
                       ${calcularTotal().toLocaleString('es-AR')}
                     </span>
                   </p>
+
                   {!mostrarFormulario && (
                     <button
                       onClick={() => { setMostrarFormulario(true); setMensajePago(''); }}

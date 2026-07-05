@@ -38,31 +38,79 @@ def crear_reserva():
             monto_pagado= monto_total / 2
         )
 
-    # Si el usuario es un abonado se le aplica el descuento correspondiente sobre el monto final
-    # if usuario.is_abonado_actual:
-    #     ahora = datetime.now()
-    #     credito_usuario = Credito.query.filter(Credito.usuario_id == usuario_id, Credito.anio == ahora.year, Credito.mes == ahora.month).first()
-    #     if not credito_usuario:
-    #         return jsonify({"status": "error", "message": "Credito no encontrado"}), 404
-    #     
-    #     monto_total -=  monto_total * credito_usuario.monto_descuento / 100
-    #     nueva_reserva.monto_total = monto_total
-    #     nueva_reserva.monto_pagado = monto_total 
-    #     nueva_reserva.estado = 'confirmada'
-    # 
-    # else:
-    #     nueva_reserva.monto_pagado = monto_total / 2
+   # Si el usuario es un abonado se le aplica el descuento correspondiente sobre el monto final
+    if usuario.is_abonado_actual:
+        ahora = datetime.now()
+        credito_usuario = Credito.query.filter(Credito.usuario_id == usuario_id, Credito.anio == ahora.year, Credito.mes == ahora.month).first()
+        if not credito_usuario:
+             return jsonify({"status": "error", "message": "Credito no encontrado"}), 404
+        monto_total -=  monto_total * credito_usuario.monto_descuento / 100
+
+        # Aplico el credito del usuario
+        if credito_usuario.clase_a_favor:
+            monto_total = 0
+            credito_usuario.clase_a_favor = False
+
+        nueva_reserva.monto_total = monto_total
+        nueva_reserva.monto_pagado = monto_total 
+        nueva_reserva.estado = 'confirmada'
+    else:
+        nueva_reserva.monto_pagado = monto_total / 2  
 
     try:
         db.session.add(nueva_reserva)
-        clase_seleccionada.cupo_disponible -=1
+        clase_seleccionada.cupo_disponible -= 1
         db.session.commit()
+
+        # REGLA DE NEGOCIO: si el usuario tiene 3+ reservas del mismo turno en el mes → se convierte en abonado
+        ahora = datetime.now()
+        reservas_mismo_turno = Reserva.query.join(Clase).filter(
+            Reserva.usuario_id == usuario_id,
+            Clase.turno_id == turno.id,
+            db.extract('month', Clase.fecha) == ahora.month,
+            db.extract('year', Clase.fecha) == ahora.year,
+            Reserva.estado.in_(['confirmada', 'pendiente_pago'])
+        ).count()
+
+        # Si ya reservo +3 veces para el mismo turno de un mismo mes
+        if reservas_mismo_turno >= 3:
+            credito_existente = Credito.query.filter_by(
+                usuario_id=usuario_id, mes=ahora.month, anio=ahora.year
+            ).first()
+            if not credito_existente:
+                nuevo_credito = Credito(
+                    usuario_id=usuario_id,
+                    mes=ahora.month,
+                    anio=ahora.year,
+                    pagado=True,
+                    descuento_activo=True
+                )
+                db.session.add(nuevo_credito)
+                
+                # Aplicar descuento retroactivo a las 3 reservas del mismo turno
+                reservas_a_actualizar = Reserva.query.join(Clase).filter(
+                    Reserva.usuario_id == usuario_id,
+                    Clase.turno_id == turno.id,
+                    db.extract('month', Clase.fecha) == ahora.month,
+                    db.extract('year', Clase.fecha) == ahora.year,
+                    Reserva.estado.in_(['confirmada', 'pendiente_pago'])
+                ).all()
+                
+
+                for r in reservas_a_actualizar:
+                    monto_con_descuento = float(r.monto_total) * 0.80  # aplica 20% descuento
+                    r.monto_total = monto_con_descuento
+                    r.monto_pagado = monto_con_descuento
+                    r.estado = 'confirmada'
+                
+                db.session.commit()
+
         return jsonify({"status": "success", "message": "Reserva creada correctamente"}), 201
-    
+
     except Exception as e:
         db.session.rollback()
         return jsonify({"status": "error", "message": str(e)}), 500
-    
+        
     
 @reservas_bp.route('/<int:id>', methods=['PUT'])
 def cancelar_reserva(id):
@@ -116,7 +164,7 @@ def cancelar_reserva(id):
 
         if ahora < limite_cancelacion_48h:
             # Más de 48hs de anticipación → genera clase a favor
-            credito_usuario.clases_a_favor += 1
+            credito_usuario.clase_a_favor = True
         else:
             # Menos de 48hs → acumula cancelación y penaliza si llega a 3
             credito_usuario.cancelaciones += 1
