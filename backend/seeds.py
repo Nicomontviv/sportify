@@ -1,7 +1,7 @@
 import os
 from datetime import date, datetime, time, timedelta
 from app import app, db
-from models import Usuario, Administrador, Actividad, Turno, Reserva, Clase, Empleado, Deposito, Certificado   
+from models import Usuario, Administrador, Actividad, Turno, Reserva, Clase, Empleado, Deposito, Certificado, db,Credito, ListaEspera
 from helpers.turnos_helper import generar_clases_para_mes
 # Seeds para la demo - Junio 2026
 def cargar_datos_base():
@@ -441,14 +441,25 @@ def cargar_datos_base():
             print("   HUpagovirtual:      casual@sportify.com    / casual123!     (Juan Perez    DNI 99999999)")
             print("   HUpagopresencial:      luis@sportify.com      / luis123!       (Luis Gonzalez DNI 88888888)")
             print("   Sin reserva:  gonzalo@sportify.com   / gonzalo123!    (Gonzalo Lopez DNI 22555111)")
-        # ==========================================================
+     # ==========================================================
             # 🌟 ESCENARIO PRE-COCINADO PARA LA MUESTRA: LISTA DE ESPERA
             # ==========================================================
             print("🎬 Configurando escenario para la Muestra de Lista de Espera...")
             
-            from models import Credito, ListaEspera
             from werkzeug.security import generate_password_hash
             ahora = datetime.now()
+
+            # --- 👇 EL PASO 0 (NUEVO BLOQUE DE LIMPIEZA) 👇 ---
+            emails_demo = ['titular@sportify.com', 'espera.casual@sportify.com', 'espera.abonado@sportify.com']
+            for email_demo in emails_demo:
+                usr_viejo = Usuario.query.filter_by(email=email_demo).first()
+                if usr_viejo:
+                    Credito.query.filter_by(usuario_id=usr_viejo.id).delete()
+                    ListaEspera.query.filter_by(usuario_id=usr_viejo.id).delete()
+                    Reserva.query.filter_by(usuario_id=usr_viejo.id).delete()
+                    db.session.delete(usr_viejo)
+            db.session.commit()
+            # --------------------------------------------------
 
             # 1. Crear Usuario Cancelador (Abonado)
             titular = Usuario(nombre="Titular", apellido="Abonado", dni="10000001", email="titular@sportify.com", password_hash=generate_password_hash("123"), fecha_nacimiento=date(1990, 1, 1))
@@ -456,11 +467,11 @@ def cargar_datos_base():
             db.session.flush()
             db.session.add(Credito(usuario_id=titular.id, mes=ahora.month, anio=ahora.year, pagado=True, descuento_activo=True))
 
-            # 2. Crear Usuario en Espera (Casual - Llegó PRIMERO)
+            # 2. Crear Usuario en Espera (Casual) - Solo lo creamos, NO lo anotamos
             espera_casual = Usuario(nombre="Espera", apellido="Casual", dni="10000002", email="espera.casual@sportify.com", password_hash=generate_password_hash("123"), fecha_nacimiento=date(1990, 1, 1))
             db.session.add(espera_casual)
 
-            # 3. Crear Usuario en Espera (Abonado - Llegó SEGUNDO)
+            # 3. Crear Usuario en Espera (Abonado) - Solo lo creamos, NO lo anotamos
             espera_abonado = Usuario(nombre="Espera", apellido="Abonado", dni="10000003", email="espera.abonado@sportify.com", password_hash=generate_password_hash("123"), fecha_nacimiento=date(1990, 1, 1))
             db.session.add(espera_abonado)
             db.session.flush()
@@ -475,17 +486,16 @@ def cargar_datos_base():
             db.session.add(clase_muestra)
             db.session.flush()
 
-            # El titular tiene la reserva confirmada
+            # El titular tiene la reserva confirmada (La clase queda 0 lugares disponibles)
             db.session.add(Reserva(clase_id=clase_muestra.id, usuario_id=titular.id, estado='confirmada', metodo_pago='efectivo', monto_total=20000.0, monto_pagado=20000.0))
 
-            # Los otros dos están en la lista de espera
-            db.session.add(ListaEspera(clase_id=clase_muestra.id, usuario_id=espera_casual.id, posicion=1, estado='en_espera'))
-            db.session.add(ListaEspera(clase_id=clase_muestra.id, usuario_id=espera_abonado.id, posicion=2, estado='en_espera'))
+            # ¡COMENTAMOS LA LISTA DE ESPERA! La fila arranca vacía para la demo en vivo
+            # db.session.add(ListaEspera(clase_id=clase_muestra.id, usuario_id=espera_casual.id, posicion=1, estado='en_espera'))
+            # db.session.add(ListaEspera(clase_id=clase_muestra.id, usuario_id=espera_abonado.id, posicion=2, estado='en_espera'))
             
             db.session.commit()
-            print("✔️ Escenario de muestra listo: Titular Abonado tiene el cupo. Casual está #1 en espera, Abonado está #2 en espera.")
+            print("✔️ Escenario de muestra listo: Titular Abonado tiene el cupo (Clase llena). La lista de espera está vacía para probarla en vivo.")
             # ==========================================================
-
             # ==========================================================
             # 🎟️ ESCENARIO DEMO: CONTROL DE ACCESO POR QR (HU asistencia)
             # 4 reservas, todas con clase de HOY:
