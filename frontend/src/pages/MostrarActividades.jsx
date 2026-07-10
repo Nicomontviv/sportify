@@ -8,7 +8,7 @@ const MostrarActividades = ({ userSession, onVolver }) => {
   const [reservasActivasIds, setReservasActivasIds] = useState(new Set());
   const [mensaje, setMensaje] = useState('');
   const [tipoMensaje, setTipoMensaje] = useState('');
-
+    const [clasesEnEspera, setClasesEnEspera] = useState([]);
   // Estado de pago
   const [pagosSeleccionados, setPagosSeleccionados] = useState({});
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
@@ -179,8 +179,14 @@ const MostrarActividades = ({ userSession, onVolver }) => {
     setTarjeta({ numero_tarjeta: '', titular: '', vencimiento: '', cvv: '' });
   };
 
+  // Asegurate de tener este estado definido arriba con tus otros useState:
+  // const [clasesEnEspera, setClasesEnEspera] = useState([]);
+
   // --- NUEVA FUNCIÓN: Unirse a la Lista de Espera ---
   const handleUnirseListaEspera = async (claseId) => {
+    // 1. Bloqueamos el botón de esta clase en particular INMEDIATAMENTE
+    setClasesEnEspera(prev => [...prev, claseId]);
+
     try {
       const response = await axios.post('http://127.0.0.1:5000/api/lista-espera', 
         { clase_id: claseId },
@@ -190,8 +196,12 @@ const MostrarActividades = ({ userSession, onVolver }) => {
       // Mostrar éxito y limpiar posibles mensajes de error previos
       setMensajePago(response.data.message);
       setTipoMensajePago('success');
-      
+      // ¡Acá NO lo sacamos del array! Queremos que el botón se quede gris.
+
     } catch (error) {
+      // 2. Si algo falló, lo sacamos del array para que el botón se vuelva a habilitar
+      setClasesEnEspera(prev => prev.filter(id => id !== claseId));
+
       if (error.response && error.response.status === 400) {
         setMensajePago(error.response.data.message);
         setTipoMensajePago('error');
@@ -285,11 +295,12 @@ const MostrarActividades = ({ userSession, onVolver }) => {
                     ) : (
                       /* --- REEMPLAZO DEL TEXTO "Sin Cupos" POR EL BOTÓN DE LISTA DE ESPERA --- */
                       <button
-                        onClick={() => handleUnirseListaEspera(clase.id)}
-                        className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded transition h-fit"
-                      >
-                        Unirse a lista de espera
-                      </button>
+                       onClick={() => handleUnirseListaEspera(clase.id)}
+                       disabled={clasesEnEspera.includes(clase.id)}
+                       className="font-bold py-2 px-4 rounded transition h-fit text-white bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 disabled:hover:bg-gray-400 disabled:cursor-not-allowed"
+                           >
+                       {clasesEnEspera.includes(clase.id) ? 'Anotado en espera' : 'Unirse a lista de espera'}
+                       </button>
                     )}
                   </div>
                 </div>

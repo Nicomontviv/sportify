@@ -482,7 +482,15 @@ def cargar_datos_base():
             db.session.add(turno_muestra)
             db.session.flush()
             
-            clase_muestra = Clase(turno_id=turno_muestra.id, fecha=date.today(), cupo_disponible=0, activo=True)
+            # Calculamos la fecha exacta del próximo viernes
+            hoy = date.today()
+            # 4 representa al viernes (0=Lunes, 1=Martes, etc.)
+            dias_para_viernes = (4 - hoy.weekday()) % 7 
+            
+            # Le sumamos 7 días extra para asegurar que siempre sea la semana que viene
+            fecha_futuro = hoy + timedelta(days=dias_para_viernes + 7)
+
+            clase_muestra = Clase(turno_id=turno_muestra.id, fecha=fecha_futuro, cupo_disponible=0, activo=True)
             db.session.add(clase_muestra)
             db.session.flush()
 
