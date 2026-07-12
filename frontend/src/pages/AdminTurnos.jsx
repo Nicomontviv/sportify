@@ -22,7 +22,7 @@ const NOMBRES_MES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ];
 
-const AdminTurnos = ({ userSession, volverAActividades, setIsLoggedIn ,irAReportes}) => {
+const AdminTurnos = ({ userSession, volverAActividades, setIsLoggedIn ,irAReportes,irAOcupacionHorario}) => {
   // Estado de datos
   const [turnos, setTurnos] = useState([]);
   const [actividades, setActividades] = useState([]);
@@ -335,6 +335,12 @@ const AdminTurnos = ({ userSession, volverAActividades, setIsLoggedIn ,irAReport
   >
     📊 Reporte de Concurrencia
   </button>
+  <button 
+  onClick={irAOcupacionHorario}
+  className="w-full text-left rounded-xl p-3 text-sm font-bold text-white/80 hover:bg-white/10 transition-colors"
+>
+  🕒 Ocupación por Día y Horario
+</button>
         </nav>
       </aside>
 

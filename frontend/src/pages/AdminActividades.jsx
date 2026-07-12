@@ -19,7 +19,8 @@ const AdminActividades = ({
   handleFormularioActividad,
   cargarActividades,
   irAGestionTurnos ,
-  irAReportes
+  irAReportes,
+  irAOcupacionHorario
 }) => {
 
   // Estados locales para la simulación del impacto de la baja (Escenario 2)
@@ -87,6 +88,12 @@ const AdminActividades = ({
   >
     📊 Reporte de Concurrencia
   </button>
+  <button 
+  onClick={irAOcupacionHorario}
+  className="w-full text-left rounded-xl p-3 text-sm font-bold text-white/80 hover:bg-white/10 transition-colors"
+>
+  🕒 Ocupación por Día y Horario
+</button>
         </nav>
       </aside>
 

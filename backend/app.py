@@ -11,6 +11,7 @@ from routes.reportes import reportes_bp
 from routes.turnos import turnos_bp  # NUEVO
 from routes.pagos import pagos_bp
 from routes.reservas import reservas_bp
+from routes.ocupacion_horarios import ocupacion_horario_bp  # NUEVO
 # Importar el nuevo archivo
 from routes.lista_espera import lista_espera_bp
 from routes.asistencia import asistencia_bp
@@ -40,7 +41,7 @@ app.register_blueprint(reservas_bp, url_prefix='/api/reservas')
 app.register_blueprint(lista_espera_bp, url_prefix='/api/lista-espera')
 app.register_blueprint(asistencia_bp, url_prefix='/api/asistencia')
 app.register_blueprint(reportes_bp)
-
+app.register_blueprint(ocupacion_horario_bp)  # NUEVO
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

@@ -10,7 +10,7 @@ import RecuperarContrasena from './pages/RecuperarContrasena';
 import RestablecerContrasena from './pages/RestablecerContrasena';
 import ConfirmarEmailRegistro from './pages/ConfirmarEmailRegistro';
 import ReporteConcurrencia from './pages/ReporteConcurrencia';
-
+import ReporteOcupacionHorarios from './pages/ReporteOcupacionHorarios';
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userSession, setUserSession] = useState(null);
@@ -152,6 +152,8 @@ function App() {
               cargarActividades={cargarActividades}
               irAGestionTurnos={() => setVistaAdmin('turnos')}
               irAReportes={() => setVistaAdmin('reportes')}
+              irAOcupacionHorario={() => setVistaAdmin('ocupacion-horario')}
+
 
             />
           ) : vistaAdmin === 'turnos' ? (
@@ -160,16 +162,29 @@ function App() {
               setIsLoggedIn={setIsLoggedIn}
               volverAActividades={() => setVistaAdmin('actividades')}
                 irAReportes={() => setVistaAdmin('reportes')}
+              irAOcupacionHorario={() => setVistaAdmin('ocupacion-horario')}
 
             />
-          ) : (
+          ) : vistaAdmin === 'reportes' ? (
             <ReporteConcurrencia
               userSession={userSession}
               setIsLoggedIn={setIsLoggedIn}
               irAGestionActividades={() => setVistaAdmin('actividades')}
               irAGestionTurnos={() => setVistaAdmin('turnos')}
+              irAOcupacionHorario={() => setVistaAdmin('ocupacion-horario')}
             />
-          )
+            
+          ) : (
+            <ReporteOcupacionHorarios
+              userSession={userSession}
+              setIsLoggedIn={setIsLoggedIn}
+              actividades={actividades}
+              irAGestionActividades={() => setVistaAdmin('actividades')}
+              irAGestionTurnos={() => setVistaAdmin('turnos')}
+              irAReporteConcurrencia={() => setVistaAdmin('reportes')}
+              irAOcupacionHorario={() => setVistaAdmin('ocupacion-horario')}
+            />
+         )
         ) : userSession?.empleado ? (
           <InicioEmpleado
             userSession={userSession}
