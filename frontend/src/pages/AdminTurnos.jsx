@@ -22,7 +22,7 @@ const NOMBRES_MES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ];
 
-const AdminTurnos = ({ userSession, volverAActividades, setIsLoggedIn }) => {
+const AdminTurnos = ({ userSession, volverAActividades, setIsLoggedIn ,irAReportes}) => {
   // Estado de datos
   const [turnos, setTurnos] = useState([]);
   const [actividades, setActividades] = useState([]);
@@ -329,6 +329,12 @@ const AdminTurnos = ({ userSession, volverAActividades, setIsLoggedIn }) => {
           <button className="w-full text-left rounded-xl bg-sportify-blue p-3 text-sm font-bold shadow-sm">
             📅 Gestión de Turnos
           </button>
+          <button 
+    onClick={irAReportes}
+    className="w-full text-left rounded-xl p-3 text-sm font-bold text-white/80 hover:bg-white/10 transition-colors"
+  >
+    📊 Reporte de Concurrencia
+  </button>
         </nav>
       </aside>
 

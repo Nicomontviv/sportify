@@ -9,6 +9,7 @@ import InicioEmpleado from './pages/InicioEmpleado';
 import RecuperarContrasena from './pages/RecuperarContrasena';
 import RestablecerContrasena from './pages/RestablecerContrasena';
 import ConfirmarEmailRegistro from './pages/ConfirmarEmailRegistro';
+import ReporteConcurrencia from './pages/ReporteConcurrencia';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -150,12 +151,23 @@ function App() {
               handleFormularioActividad={handleFormularioActividad}
               cargarActividades={cargarActividades}
               irAGestionTurnos={() => setVistaAdmin('turnos')}
+              irAReportes={() => setVistaAdmin('reportes')}
+
             />
-          ) : (
+          ) : vistaAdmin === 'turnos' ? (
             <AdminTurnos
               userSession={userSession}
               setIsLoggedIn={setIsLoggedIn}
               volverAActividades={() => setVistaAdmin('actividades')}
+                irAReportes={() => setVistaAdmin('reportes')}
+
+            />
+          ) : (
+            <ReporteConcurrencia
+              userSession={userSession}
+              setIsLoggedIn={setIsLoggedIn}
+              irAGestionActividades={() => setVistaAdmin('actividades')}
+              irAGestionTurnos={() => setVistaAdmin('turnos')}
             />
           )
         ) : userSession?.empleado ? (
