@@ -14,6 +14,7 @@ from routes.reservas import reservas_bp
 from routes.ocupacion_horarios import ocupacion_horario_bp  # NUEVO
 from routes.usuarios_cancelaciones import usuarios_cancelaciones_bp  # NUEVO
 from routes.morosidad import morosidad_bp  # NUEVO
+from routes.recordatorio import recordatorio_bp  # NUEVO
 # Importar el nuevo archivo
 from routes.lista_espera import lista_espera_bp
 from routes.asistencia import asistencia_bp
@@ -45,6 +46,7 @@ app.register_blueprint(asistencia_bp, url_prefix='/api/asistencia')
 app.register_blueprint(reportes_bp)
 app.register_blueprint(ocupacion_horario_bp)  # NUEVO
 app.register_blueprint(usuarios_cancelaciones_bp)  # NUEVO
-app.register_blueprint(morosidad_bp)  # NUEVO
+app.register_blueprint(morosidad_bp)  # NUEVO}
+app.register_blueprint(recordatorio_bp)  # NUEVO
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

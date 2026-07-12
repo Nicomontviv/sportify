@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-// HU: Reporte de morosidad.
-// Reglas cubiertas:
+// HU: Reporte de morosidad + Notificación de recordatorio de pago.
+// Reglas cubiertas del reporte:
 // - Regla 1: acceso exclusivo admin (X-User-Role: admin)
 // - Regla 2: se resuelve en el backend (reservas confirmadas con saldo)
-// - Regla 3: nombre, tipo, monto adeudado (antigüedad: fuera de alcance
-//   por ahora, decisión de diseño confirmada)
+// - Regla 3: nombre, tipo, monto adeudado (antigüedad: fuera de alcance)
 // - Regla 4: filtro por mes y por tipo de usuario
+//
+// Reglas cubiertas del recordatorio:
+// - Regla 1: acceso exclusivo admin
+// - Regla 2: solo se puede enviar a usuarios morosos (validado en backend)
+// - Regla 3: se registra la fecha de envío
+// - Regla 4: se bloquea el reenvío si ya se mandó hoy (botón deshabilitado
+//   + el backend también lo valida por las dudas)
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -30,6 +36,8 @@ const ReporteMorosidad = ({
   const [datos, setDatos] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
+  const [enviandoId, setEnviandoId] = useState(null); // usuario_id en proceso de envío
+  const [mensajeRecordatorio, setMensajeRecordatorio] = useState('');
 
   const cargarReporte = async () => {
     setCargando(true);
@@ -58,6 +66,33 @@ const ReporteMorosidad = ({
   }, [mes, anio, tipoUsuario]);
 
   const anios = [hoy.getFullYear() - 1, hoy.getFullYear(), hoy.getFullYear() + 1];
+
+  const enviarRecordatorio = async (usuarioId) => {
+    setEnviandoId(usuarioId);
+    setMensajeRecordatorio('');
+    try {
+      const response = await axios.post(
+        `http://127.0.0.1:5000/api/reportes/morosidad/recordatorio/${usuarioId}`,
+        {},
+        { headers: { 'X-User-Role': userSession?.administrador ? 'admin' : 'cliente' } }
+      );
+      setMensajeRecordatorio({ tipo: 'exito', texto: response.data.message });
+      // Actualizamos el estado local para reflejar que ya se envió hoy,
+      // sin necesidad de recargar todo el reporte.
+      setDatos((prev) =>
+        prev.map((fila) =>
+          fila.usuario_id === usuarioId
+            ? { ...fila, recordatorio_enviado_hoy: true }
+            : fila
+        )
+      );
+    } catch (err) {
+      const msg = err.response?.data?.message || 'No se pudo enviar el recordatorio.';
+      setMensajeRecordatorio({ tipo: 'error', texto: msg });
+    } finally {
+      setEnviandoId(null);
+    }
+  };
 
   return (
     <div className="flex min-h-screen bg-sportify-light">
@@ -167,10 +202,21 @@ const ReporteMorosidad = ({
           </div>
         </div>
 
-        {/* ERROR */}
+        {/* ERROR de carga del reporte */}
         {error && (
           <div className="mb-6 rounded-xl bg-red-50 border border-red-300 p-4 text-sm font-bold text-red-600">
             ❌ {error}
+          </div>
+        )}
+
+        {/* MENSAJE de resultado del envío de recordatorio */}
+        {mensajeRecordatorio && (
+          <div className={`mb-6 rounded-xl border p-4 text-sm font-bold ${
+            mensajeRecordatorio.tipo === 'exito'
+              ? 'bg-green-50 border-sportify-green text-sportify-green'
+              : 'bg-red-50 border-red-300 text-red-600'
+          }`}>
+            {mensajeRecordatorio.tipo === 'exito' ? '✅' : '❌'} {mensajeRecordatorio.texto}
           </div>
         )}
 
@@ -179,7 +225,7 @@ const ReporteMorosidad = ({
           {cargando ? (
             <p className="p-8 text-center text-sm text-sportify-dark opacity-60">Cargando reporte...</p>
           ) : datos.length === 0 ? (
-            // Escenario 2: sin usuarios morosos en el período, sin error
+            // Escenario 2 del reporte: sin usuarios morosos, sin error
             <p className="p-8 text-center text-sm text-sportify-dark opacity-60">
               No hay usuarios morosos para {MESES[mes - 1]} de {anio}
               {tipoUsuario ? ` (${tipoUsuario})` : ''}.
@@ -191,6 +237,7 @@ const ReporteMorosidad = ({
                   <th className="p-4">Usuario</th>
                   <th className="p-4">Tipo</th>
                   <th className="p-4">Monto Adeudado</th>
+                  <th className="p-4 text-center">Recordatorio</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm text-sportify-dark">
@@ -205,6 +252,19 @@ const ReporteMorosidad = ({
                       </span>
                     </td>
                     <td className="p-4 font-bold text-red-500">${fila.monto_adeudado.toFixed(2)}</td>
+                    <td className="p-4 text-center">
+                      {fila.recordatorio_enviado_hoy ? (
+                        <span className="text-xs font-bold text-sportify-green">✔️ Enviado hoy</span>
+                      ) : (
+                        <button
+                          onClick={() => enviarRecordatorio(fila.usuario_id)}
+                          disabled={enviandoId === fila.usuario_id}
+                          className="rounded-lg border border-sportify-blue px-3 py-1.5 text-xs font-bold text-sportify-blue hover:bg-sportify-blue hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {enviandoId === fila.usuario_id ? 'Enviando...' : 'Enviar recordatorio'}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -12,8 +12,13 @@ Reglas de negocio cubiertas:
   (decisión de alcance confirmada, queda para una iteración futura).
 - Regla 4: filtro por mes (de la Clase de la reserva) y por tipo de
   usuario (abonado/casual)
+
+ACTUALIZADO: se agrega 'recordatorio_enviado_hoy', para que el frontend
+sepa si debe deshabilitar el botón de "Enviar recordatorio" (HU de
+notificación de recordatorio de pago).
 """
 
+from datetime import date
 from flask import Blueprint, jsonify, request
 from sqlalchemy import extract
 from models import db, Usuario, Clase, Reserva
@@ -62,6 +67,7 @@ def reporte_morosidad():
             deuda_por_usuario[reserva.usuario_id] = 0.0
         deuda_por_usuario[reserva.usuario_id] += adeudado
 
+    hoy = date.today()
     reporte = []
     for usuario_id, monto_adeudado in deuda_por_usuario.items():
         usuario = Usuario.query.get(usuario_id)
@@ -75,11 +81,17 @@ def reporte_morosidad():
         if tipo_usuario and tipo_usuario != tipo:
             continue
 
+        recordatorio_enviado_hoy = bool(
+            usuario.ultimo_recordatorio_enviado and
+            usuario.ultimo_recordatorio_enviado.date() == hoy
+        )
+
         reporte.append({
             'usuario_id': usuario.id,
             'nombre_completo': f'{usuario.nombre} {usuario.apellido}',
             'tipo': tipo,
             'monto_adeudado': round(monto_adeudado, 2),
+            'recordatorio_enviado_hoy': recordatorio_enviado_hoy,
         })
 
     # Orden: de mayor a menor deuda, para priorizar cobranzas
