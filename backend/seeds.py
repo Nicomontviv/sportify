@@ -593,10 +593,137 @@ def cargar_datos_base():
             print("   #49 Gonzalo Lopez -> 'todavia no es horario de ingreso' (manual)")
             print("   #50 Juan Perez    -> 'la reserva esta cancelada' (manual)")
             
+
         except Exception as e:
             db.session.rollback()
             print(f"⚠️ Nota: No se pudieron cargar los turnos de prueba: {str(e)}")
+     # ==========================================================
+# 📊 ESCENARIO DEMO: REPORTES DE ADMINISTRACIÓN
+# (concurrencia por actividad, ocupación por día/horario,
+#  usuarios y tasa de cancelaciones, morosidad + recordatorio)
+#
+# IMPORTANTE: usa las clases de Junio 2026 que ya crea
+# cargar_datos_base() (fútbol, vóley, pádel, básquet). Para ver
+# estos reportes con datos, seleccionar Junio 2026 en el filtro.
+#
+# No modifica ni borra nada de lo ya creado por el equipo: solo
+# agrega usuarios y reservas nuevas.
+# ==========================================================
+def cargar_datos_reportes_admin():
+    print("📊 Configurando escenario para los Reportes de Administración...")
+    with app.app_context():
+        try:
+            from werkzeug.security import generate_password_hash
+ 
+            # --- Usuario nuevo, exclusivo para no pisar los de otras HU ---
+            moroso_email = "moroso@sportify.com"
+            moroso_viejo = Usuario.query.filter_by(email=moroso_email).first()
+            if moroso_viejo:
+                Reserva.query.filter_by(usuario_id=moroso_viejo.id).delete()
+                db.session.delete(moroso_viejo)
+                db.session.commit()
+                print("🧹 Viejo usuario Moroso Demo eliminado.")
+ 
+            moroso_user = Usuario(
+                nombre="Moroso",
+                apellido="Demo",
+                dni="10000099",
+                email=moroso_email,
+                password_hash=generate_password_hash("moroso123!"),
+                fecha_nacimiento=date(1992, 4, 4)
+            )
+            db.session.add(moroso_user)
+            db.session.commit()
+            print("✔️ Usuario creado: moroso@sportify.com / moroso123! (para reporte de morosidad)")
+ 
+            casual_user = Usuario.query.filter_by(email="casual@sportify.com").first()
+            luis_user = Usuario.query.filter_by(email="luis@sportify.com").first()
+ 
+            # --- Buscamos clases de Junio 2026 ya creadas por el equipo ---
+            futbol_act = Actividad.query.filter_by(nombre="Fútbol").first()
+            voley_act = Actividad.query.filter_by(nombre="Vóley").first()
+            basquet_act = Actividad.query.filter_by(nombre="Básquet").first()
+ 
+            turno_futbol_lunes = Turno.query.filter_by(actividad_id=futbol_act.id, dia_semana='lunes').first()
+            turno_voley_martes = Turno.query.filter_by(actividad_id=voley_act.id, dia_semana='martes').first()
+            turno_basquet_jueves = Turno.query.filter_by(actividad_id=basquet_act.id, dia_semana='jueves').first()
+ 
+            clases_futbol_lunes = Clase.query.filter_by(turno_id=turno_futbol_lunes.id).order_by(Clase.fecha).all() if turno_futbol_lunes else []
+            clases_voley_martes = Clase.query.filter_by(turno_id=turno_voley_martes.id).order_by(Clase.fecha).all() if turno_voley_martes else []
+            clases_basquet_jueves = Clase.query.filter_by(turno_id=turno_basquet_jueves.id).order_by(Clase.fecha).all() if turno_basquet_jueves else []
+ 
+            # --- Asistencias reales, para concurrencia y ocupación por horario ---
+            if len(clases_futbol_lunes) >= 2 and casual_user:
+                db.session.add(Reserva(
+                    clase_id=clases_futbol_lunes[0].id, usuario_id=casual_user.id,
+                    estado='asistio', metodo_pago='efectivo',
+                    monto_total=20000.00, monto_pagado=20000.00
+                ))
+                db.session.add(Reserva(
+                    clase_id=clases_futbol_lunes[0].id, usuario_id=casual_user.id,
+                    estado='asistio', metodo_pago='efectivo',
+                    monto_total=20000.00, monto_pagado=20000.00
+                ))
+                db.session.add(Reserva(
+                    clase_id=clases_futbol_lunes[0].id, usuario_id=casual_user.id,
+                    estado='asistio', metodo_pago='efectivo',
+                    monto_total=20000.00, monto_pagado=20000.00
+                ))
+                db.session.add(Reserva(
+                    clase_id=clases_futbol_lunes[0].id, usuario_id=casual_user.id,
+                    estado='asistio', metodo_pago='efectivo',
+                    monto_total=20000.00, monto_pagado=20000.00
+                ))
+                db.session.add(Reserva(
+                    clase_id=clases_futbol_lunes[0].id, usuario_id=casual_user.id,
+                    estado='asistio', metodo_pago='efectivo',
+                    monto_total=20000.00, monto_pagado=20000.00
+                ))
+            if len(clases_voley_martes) >= 2 and luis_user:
+                db.session.add(Reserva(
+                    clase_id=clases_voley_martes[0].id, usuario_id=luis_user.id,
+                    estado='asistio', metodo_pago='efectivo',
+                    monto_total=18000.00, monto_pagado=18000.00
+                ))
+            if len(clases_basquet_jueves) >= 2 and casual_user:
+                db.session.add(Reserva(
+                    clase_id=clases_basquet_jueves[0].id, usuario_id=casual_user.id,
+                    estado='asistio', metodo_pago='efectivo',
+                    monto_total=18000.00, monto_pagado=18000.00
+                ))
+ 
+            # --- Cancelaciones diferenciadas, para usuarios y tasa de cancelación ---
+            if len(clases_futbol_lunes) >= 2 and luis_user:
+                db.session.add(Reserva(
+                    clase_id=clases_futbol_lunes[1].id, usuario_id=luis_user.id,
+                    estado='cancelada_usuario', metodo_pago='efectivo',
+                    monto_total=20000.00, monto_pagado=10000.00
+                ))
+            if len(clases_voley_martes) >= 2 and casual_user:
+                db.session.add(Reserva(
+                    clase_id=clases_voley_martes[1].id, usuario_id=casual_user.id,
+                    estado='cancelada_centro', metodo_pago='efectivo',
+                    monto_total=18000.00, monto_pagado=9000.00
+                ))
+ 
+            # --- Reserva confirmada con saldo pendiente, para morosidad + recordatorio ---
+            if len(clases_basquet_jueves) >= 2:
+                db.session.add(Reserva(
+                    clase_id=clases_basquet_jueves[1].id, usuario_id=moroso_user.id,
+                    estado='confirmada', metodo_pago='tarjeta_virtual',
+                    monto_total=18000.00, monto_pagado=9000.00
+                ))
+ 
+            db.session.commit()
+            print("✔️ Escenarios de reportes cargados (concurrencia, ocupación, cancelaciones, morosidad).")
+            print("   Para verlos: seleccionar Junio 2026 en los filtros de cada reporte.")
+            print("   Usuario moroso de prueba: moroso@sportify.com / moroso123!")
+ 
+        except Exception as e:
+            db.session.rollback()
+            print(f"⚠️ Nota: No se pudieron cargar los datos de reportes: {str(e)}")
 
 if __name__ == "__main__":
     with app.app_context():
         cargar_datos_base()
+    cargar_datos_reportes_admin()
