@@ -15,7 +15,7 @@ const MESES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ];
 
-const ReporteConcurrencia = ({ userSession, setIsLoggedIn, irAGestionActividades, irAGestionTurnos ,irAOcupacionHorario
+const ReporteConcurrencia = ({ userSession, setIsLoggedIn, irAGestionActividades, irAGestionTurnos ,irAOcupacionHorario, irAReporteUsuariosCancelaciones
 
 }) => {
   const hoy = new Date();
@@ -81,6 +81,12 @@ const ReporteConcurrencia = ({ userSession, setIsLoggedIn, irAGestionActividades
   className="w-full text-left rounded-xl p-3 text-sm font-bold text-white/80 hover:bg-white/10 transition-colors"
 >
   🕒 Ocupación por Día y Horario
+</button>
+  <button 
+  onClick={irAReporteUsuariosCancelaciones}
+  className="w-full text-left rounded-xl p-3 text-sm font-bold text-white/80 hover:bg-white/10 transition-colors"
+>
+  📉 Reporte de Usuarios y Cancelaciones
 </button>
         </nav>
       </aside>

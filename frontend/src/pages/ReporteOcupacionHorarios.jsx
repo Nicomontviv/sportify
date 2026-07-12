@@ -14,7 +14,7 @@ const MESES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ];
 
-const ReporteOcupacionHorario = ({ userSession, setIsLoggedIn, actividades, irAGestionActividades, irAGestionTurnos, irAReporteConcurrencia }) => {
+const ReporteOcupacionHorario = ({ userSession, setIsLoggedIn, actividades, irAGestionActividades, irAGestionTurnos, irAReporteConcurrencia ,irAReporteUsuariosCancelaciones}) => {
   const hoy = new Date();
   const [mes, setMes] = useState(hoy.getMonth() + 1);
   const [anio, setAnio] = useState(hoy.getFullYear());
@@ -83,6 +83,12 @@ const ReporteOcupacionHorario = ({ userSession, setIsLoggedIn, actividades, irAG
           <button className="w-full text-left rounded-xl bg-sportify-blue p-3 text-sm font-bold shadow-sm transition-transform hover:scale-[1.02]">
             🕒 Ocupación por Día y Horario
           </button>
+            <button 
+  onClick={irAReporteUsuariosCancelaciones}
+  className="w-full text-left rounded-xl p-3 text-sm font-bold text-white/80 hover:bg-white/10 transition-colors"
+>
+  📉 Reporte de Usuarios y Cancelaciones
+</button>
         </nav>
       </aside>
 
