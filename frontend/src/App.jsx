@@ -12,6 +12,7 @@ import ConfirmarEmailRegistro from './pages/ConfirmarEmailRegistro';
 import ReporteConcurrencia from './pages/ReporteConcurrencia';
 import ReporteOcupacionHorarios from './pages/ReporteOcupacionHorarios';
 import ReporteUsuariosCancelaciones from './pages/ReporteUsuariosCancelaciones';
+import ReporteMorosidad from './pages/ReporteMorosidad';
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userSession, setUserSession] = useState(null);
@@ -155,6 +156,7 @@ function App() {
       irAReportes={() => setVistaAdmin('reportes')}
       irAOcupacionHorario={() => setVistaAdmin('ocupacion-horario')}
       irAReporteUsuariosCancelaciones={() => setVistaAdmin('usuarios-cancelaciones')}
+      irAReporteMorosidad={() => setVistaAdmin('morosidad')}
     />
   ) : vistaAdmin === 'turnos' ? (
     <AdminTurnos
@@ -164,6 +166,7 @@ function App() {
       irAReportes={() => setVistaAdmin('reportes')}
       irAOcupacionHorario={() => setVistaAdmin('ocupacion-horario')}
       irAReporteUsuariosCancelaciones={() => setVistaAdmin('usuarios-cancelaciones')}
+      irAReporteMorosidad={() => setVistaAdmin('morosidad')}
     />
   ) : vistaAdmin === 'reportes' ? (
     <ReporteConcurrencia
@@ -173,6 +176,7 @@ function App() {
       irAGestionTurnos={() => setVistaAdmin('turnos')}
       irAOcupacionHorario={() => setVistaAdmin('ocupacion-horario')}
       irAReporteUsuariosCancelaciones={() => setVistaAdmin('usuarios-cancelaciones')}
+      irAReporteMorosidad={() => setVistaAdmin('morosidad')}
     />
   ) : vistaAdmin === 'ocupacion-horario' ? (
     <ReporteOcupacionHorarios
@@ -183,7 +187,18 @@ function App() {
       irAGestionTurnos={() => setVistaAdmin('turnos')}
       irAReporteConcurrencia={() => setVistaAdmin('reportes')}
       irAReporteUsuariosCancelaciones={() => setVistaAdmin('usuarios-cancelaciones')}
+      iraReporteMorosidad={() => setVistaAdmin('morosidad')}
     />
+  ) : vistaAdmin === 'morosidad' ? (
+    <ReporteMorosidad
+  userSession={userSession}
+  setIsLoggedIn={setIsLoggedIn}
+  irAGestionActividades={() => setVistaAdmin('actividades')}
+  irAGestionTurnos={() => setVistaAdmin('turnos')}
+  irAReporteConcurrencia={() => setVistaAdmin('reportes')}
+  irAOcupacionHorario={() => setVistaAdmin('ocupacion-horario')}
+  irAUsuariosCancelaciones={() => setVistaAdmin('usuarios-cancelaciones')}
+/>
   ) : (
     <ReporteUsuariosCancelaciones
       userSession={userSession}
@@ -192,6 +207,7 @@ function App() {
       irAGestionTurnos={() => setVistaAdmin('turnos')}
       irAReporteConcurrencia={() => setVistaAdmin('reportes')}
       irAOcupacionHorario={() => setVistaAdmin('ocupacion-horario')}
+      irAReporteMorosidad={() => setVistaAdmin('morosidad')}
     />
   )
 ) : userSession?.empleado ? (

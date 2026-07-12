@@ -22,7 +22,7 @@ const NOMBRES_MES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ];
 
-const AdminTurnos = ({ userSession, volverAActividades, setIsLoggedIn ,irAReportes,irAOcupacionHorario,irAReporteUsuariosCancelaciones}) => {
+const AdminTurnos = ({ userSession, volverAActividades, setIsLoggedIn ,irAReportes,irAOcupacionHorario,irAReporteUsuariosCancelaciones,irAReporteMorosidad}) => {
   // Estado de datos
   const [turnos, setTurnos] = useState([]);
   const [actividades, setActividades] = useState([]);
@@ -346,6 +346,12 @@ const AdminTurnos = ({ userSession, volverAActividades, setIsLoggedIn ,irAReport
   className="w-full text-left rounded-xl p-3 text-sm font-bold text-white/80 hover:bg-white/10 transition-colors"
 >
   📉 Reporte de Usuarios y Cancelaciones
+</button>
+    <button 
+  onClick={irAReporteMorosidad}
+  className="w-full text-left rounded-xl p-3 text-sm font-bold text-white/80 hover:bg-white/10 transition-colors"                         
+>
+  💸 Reporte de Morosidad
 </button>
         </nav>
       </aside>
