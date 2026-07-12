@@ -73,7 +73,7 @@ CREATE TABLE credito (
   fecha_pago       DATETIME,
   cancelaciones    TINYINT       NOT NULL DEFAULT 0,        -- acumuladas en el mes
   descuento_activo TINYINT(1)    NOT NULL DEFAULT 1,
-  clase_a_favor TINYINT(1) NOT NULL DEFAULT 0,
+  clases_a_favor TINYINT NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
   UNIQUE KEY uq_credito_usuario_mes_anio (usuario_id, mes, anio),
   CONSTRAINT fk_credito_usuario FOREIGN KEY (usuario_id)

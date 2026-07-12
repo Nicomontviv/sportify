@@ -47,9 +47,9 @@ def crear_reserva():
         monto_total -=  monto_total * credito_usuario.monto_descuento / 100
 
         # Aplico el credito del usuario
-        if credito_usuario.clase_a_favor:
+        if credito_usuario.clases_a_favor > 0:
             monto_total = 0
-            credito_usuario.clase_a_favor = False
+            credito_usuario.clases_a_favor -= 1
 
         nueva_reserva.monto_total = monto_total
         nueva_reserva.monto_pagado = monto_total 
@@ -162,14 +162,15 @@ def cancelar_reserva(id):
         if not credito_usuario:
             return jsonify({"status": "error", "message": "Crédito del abonado no encontrado"}), 404
 
+        # Acumula cancelación siempre
+        credito_usuario.cancelaciones += 1
+
         if ahora < limite_cancelacion_48h:
-            # Más de 48hs de anticipación → genera clase a favor
-            credito_usuario.clase_a_favor = True
-        else:
-            # Menos de 48hs → acumula cancelación y penaliza si llega a 3
-            credito_usuario.cancelaciones += 1
-            if credito_usuario.cancelaciones >= 3:
-                credito_usuario.descuento_activo = 0
+            # Más de 48hs → genera clase a favor
+            credito_usuario.clases_a_favor += 1
+
+        if credito_usuario.cancelaciones >= 3:
+            credito_usuario.descuento_activo = False
     try:
         reserva.estado='cancelada_usuario'
         #clase.cupo_disponible += 1  //dejo esto comentado por las dudas 

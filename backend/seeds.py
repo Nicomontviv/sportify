@@ -162,7 +162,7 @@ def cargar_datos_base():
     print("🙋 [2.92/4] Creando usuario Abonado Carlos Gomez (HU cancelaciones)...")
     with app.app_context():
         from werkzeug.security import generate_password_hash
-        from models import Credito
+        from models import Credito, Certificado
 
         abonado_email = "abonado@sportify.com"
 
@@ -172,6 +172,7 @@ def cargar_datos_base():
         if abonado_viejo:
             Reserva.query.filter_by(usuario_id=abonado_viejo.id).delete()
             Credito.query.filter_by(usuario_id=abonado_viejo.id).delete()
+            Certificado.query.filter_by(usuario_id=abonado_viejo.id).delete()
             db.session.delete(abonado_viejo)
             db.session.commit()
             print("🧹 Viejo usuario Carlos Gomez eliminado.")
@@ -198,6 +199,13 @@ def cargar_datos_base():
             cancelaciones=0
         )
         db.session.add(credito)
+
+        certificado = Certificado(
+            usuario_id=abonado_usuario.id,
+            fecha_vencimiento=date(2027, 1, 1),
+            estado='vigente'
+        )
+        db.session.add(certificado)
         db.session.commit()
         print("✔️ Usuario Abonado creado: abonado@sportify.com / abonado123! (DNI 33333333)")
 
