@@ -14,6 +14,7 @@ class Usuario(db.Model):
     email = db.Column(db.String(150), nullable=False, unique=True)
     password_hash = db.Column(db.String(255), nullable=False)
     fecha_nacimiento = db.Column(db.Date, nullable=False)
+    ultimo_recordatorio_enviado = db.Column(db.DateTime, nullable=True)
     activo = db.Column(db.Boolean, nullable=False, default=True)
     fecha_alta = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     token_recuperacion = db.Column(db.String(255), nullable=True)

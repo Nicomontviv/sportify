@@ -18,7 +18,11 @@ const AdminActividades = ({
   cancelarEdicion, 
   handleFormularioActividad,
   cargarActividades,
-  irAGestionTurnos 
+  irAGestionTurnos ,
+  irAReportes,
+  irAOcupacionHorario,
+  irAReporteUsuariosCancelaciones,
+  irAReporteMorosidad
 }) => {
 
   // Estados locales para la simulación del impacto de la baja (Escenario 2)
@@ -80,6 +84,31 @@ const AdminActividades = ({
           >
             📅 Gestión de Turnos
           </button>
+          <button 
+    onClick={irAReportes}
+    className="w-full text-left rounded-xl p-3 text-sm font-bold text-white/80 hover:bg-white/10 transition-colors"
+  >
+    📊 Reporte de Concurrencia
+  </button>
+  <button 
+  onClick={irAOcupacionHorario}
+  className="w-full text-left rounded-xl p-3 text-sm font-bold text-white/80 hover:bg-white/10 transition-colors"
+>
+  🕒 Ocupación por Día y Horario
+</button>
+          <button 
+  onClick={irAReporteUsuariosCancelaciones}
+  className="w-full text-left rounded-xl p-3 text-sm font-bold text-white/80 hover:bg-white/10 transition-colors"
+>
+  📉 Reporte de Usuarios y Cancelaciones
+</button>
+          <button 
+  onClick={irAReporteMorosidad}
+  className="w-full text-left rounded-xl p-3 text-sm font-bold text-white/80 hover:bg-white/10 transition-colors"                         
+>
+  💸 Reporte de Morosidad
+</button>
+
         </nav>
       </aside>
 
