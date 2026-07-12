@@ -503,13 +503,21 @@ def reservar_y_pagar():
             actividad = db.session.get(Actividad, turno.actividad_id)
             monto_total = float(actividad.precio_base)
 
-            if usuario.is_abonado_actual:
+            if usuario.es_abonado_mes_actual:
                 ahora = datetime.now()
                 credito = Credito.query.filter_by(
                     usuario_id=user_id, anio=ahora.year, mes=ahora.month
                 ).first()
+                print(f"DEBUG is_abonado: True, credito encontrado: {credito}")
                 if credito:
+                    print(f"DEBUG clases_a_favor: {credito.clases_a_favor}")
                     monto_total = round(monto_total - monto_total * float(credito.monto_descuento) / 100, 2)
+                    
+                    # REGLA DE NEGOCIO: si tiene clase a favor, la próxima reserva es gratis
+                    if credito.clases_a_favor > 0:
+                        monto_total = 0
+                        credito.clases_a_favor -= 1
+
                 monto_a_cobrar = monto_total
                 monto_pagado_inicial = monto_total
                 tipo_deposito = 'pago_total'

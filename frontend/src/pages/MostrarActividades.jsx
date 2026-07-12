@@ -10,6 +10,7 @@ const MostrarActividades = ({ userSession, onVolver }) => {
   const [tipoMensaje, setTipoMensaje] = useState('');
 
   // Estado de pago
+  const [creditoUsuario, setCreditoUsuario] = useState(null);
   const [pagosSeleccionados, setPagosSeleccionados] = useState({});
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [procesando, setProcesando] = useState(false);
@@ -59,6 +60,12 @@ const MostrarActividades = ({ userSession, onVolver }) => {
       const finMes = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).toISOString().split('T')[0];
       const response = await axios.get(`http://127.0.0.1:5000/api/turnos/clases?desde=${hoy}&hasta=${finMes}&actividad_id=${actividad.id}`);
       if (response.data.status === 'success') setClases(response.data.clases);
+
+      // Traigo el credito del usuario
+      const resCred = await axios.get(`http://127.0.0.1:5000/api/usuarios/${userSession.id}`);
+      if (resCred.data.status === 'success') {
+          setCreditoUsuario(resCred.data.user.credito);
+      }
     } catch (error) {
       console.error("Error al mostrar las clases", error.response?.data || error.message);
     }
@@ -105,19 +112,20 @@ const MostrarActividades = ({ userSession, onVolver }) => {
   };
 
   const esAbonado = Object.values(contarClasesPorTurno()).some(count => count >= 3);
+  const tieneClaseAFavor = creditoUsuario?.clases_a_favor > 0;
 
   const calcularTotal = () => {
-    const precio = actividadSeleccionada.precio_base || 0;
-    const precioConDescuento = precio * 0.80;
-    const cantidadClases = Object.keys(pagosSeleccionados).length;
+      const precio = actividadSeleccionada.precio_base || 0;
+      const precioConDescuento = esAbonado ? precio * 0.80 : precio;
+      let clasesAFavorRestantes = creditoUsuario?.clases_a_favor || 0;
 
-    if (esAbonado) {
-      return precioConDescuento * cantidadClases;
-    }
-
-    return Object.values(pagosSeleccionados).reduce((total, tipo) => {
-      return total + (tipo === 'senia' ? precio * 0.5 : precio);
-    }, 0);
+      return Object.values(pagosSeleccionados).reduce((total) => {
+          if (tieneClaseAFavor && clasesAFavorRestantes > 0) {
+              clasesAFavorRestantes--;
+              return total;
+          }
+          return total + precioConDescuento;
+      }, 0);
   };
 
   const clasesFiltradas = clasesDeActividadSeleccionada.filter(c => !reservasActivasIds.has(c.id));

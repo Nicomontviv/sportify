@@ -40,6 +40,17 @@ class Usuario(db.Model):
         ).first()
         return credito_actual is not None
 
+    @property
+    def es_abonado_mes_actual(self):
+        """Verifica si el usuario es abonado este mes, independientemente del descuento activo"""
+        ahora = datetime.now()
+        credito_actual = Credito.query.filter_by(
+            usuario_id=self.id,
+            mes=ahora.month,
+            anio=ahora.year,
+            pagado=True
+        ).first()
+        return credito_actual is not None
 
 class Credito(db.Model):
     __tablename__ = 'credito'

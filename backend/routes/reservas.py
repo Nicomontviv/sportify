@@ -145,7 +145,7 @@ def cancelar_reserva(id):
     
     # REGLA DE NEGOCIO: Si la cancelación ocurre con más de 24 horas de anticipación, se devuelve la seña al usuario no abonado
     senia_devuelta = False
-    if not usuario.is_abonado_actual:
+    if not usuario.es_abonado_mes_actual:
         limite_cancelacion = inicio_clase - timedelta(hours=24)
         if ahora < limite_cancelacion:
             reserva.monto_pagado = 0
