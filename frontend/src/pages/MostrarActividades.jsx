@@ -23,7 +23,7 @@ const MostrarActividades = ({ userSession, onVolver }) => {
     cvv: ''
   });
   const [erroresTarjeta, setErroresTarjeta] = useState({});
-  const [clasesEnEspera, setClasesEnEspera] = useState([]);
+  
 
   useEffect(() => {
     const cargarActividadesDisponibles = async () => {
