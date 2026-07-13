@@ -74,24 +74,29 @@ def reporte_concurrencia():
             datos_por_actividad[fila.actividad_id] = {
                 'nombre': fila.actividad_nombre,
                 'total_asistentes': 0,
+                'cupo_total': 0,  # NUEVO: suma de cupos de todas las clases del mes
                 'porcentajes_ocupacion': [],
             }
 
         datos_por_actividad[fila.actividad_id]['total_asistentes'] += asistentes_clase
 
         if fila.cupo_maximo:
+            datos_por_actividad[fila.actividad_id]['cupo_total'] += fila.cupo_maximo  # NUEVO
             porcentaje = (asistentes_clase / fila.cupo_maximo) * 100
             datos_por_actividad[fila.actividad_id]['porcentajes_ocupacion'].append(porcentaje)
 
     # Armamos la lista final, Regla 3 y Regla 4
     reporte = []
     for datos in datos_por_actividad.values():
-        porcentajes = datos['porcentajes_ocupacion']
-        ocupacion_promedio = round(sum(porcentajes) / len(porcentajes), 2) if porcentajes else 0.0
+        if datos['cupo_total']:
+            ocupacion_promedio = round((datos['total_asistentes'] / datos['cupo_total']) * 100, 2)
+        else:
+            ocupacion_promedio = 0.0
 
         reporte.append({
             'nombre_actividad': datos['nombre'],
             'total_asistentes': datos['total_asistentes'],
+            'cupo_total': datos['cupo_total'],
             'porcentaje_ocupacion_promedio': ocupacion_promedio,
         })
 
