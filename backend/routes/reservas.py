@@ -96,10 +96,12 @@ def cancelar_reserva(id):
         return jsonify({"status": "error", "message": "No es posible cancelar la reserva: el plazo límite de cancelación (1 hora antes del inicio) ya fue superado"}), 409
     
     # REGLA DE NEGOCIO: Si la cancelación ocurre con más de 24 horas de anticipación, se devuelve la seña al usuario no abonado
+    # (solo si esa reserva efectivamente tenía una seña pagada: las reservas que vienen de la
+    # lista de espera nacen con monto_pagado=0.00, ya que ahí no se cobra seña)
     senia_devuelta = False
     if not usuario.is_abonado_actual:
         limite_cancelacion = inicio_clase - timedelta(hours=24)
-        if ahora < limite_cancelacion:
+        if ahora < limite_cancelacion and reserva.monto_pagado > 0:
             reserva.monto_pagado = 0
             senia_devuelta = True
     else:

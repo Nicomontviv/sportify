@@ -442,15 +442,17 @@ def cargar_datos_base():
             print("   HUpagopresencial:      luis@sportify.com      / luis123!       (Luis Gonzalez DNI 88888888)")
             print("   Sin reserva:  gonzalo@sportify.com   / gonzalo123!    (Gonzalo Lopez DNI 22555111)")
      # ==========================================================
+            # ==========================================================
             # 🌟 ESCENARIO PRE-COCINADO PARA LA MUESTRA: LISTA DE ESPERA
             # ==========================================================
             print("🎬 Configurando escenario para la Muestra de Lista de Espera...")
             
-            from werkzeug.security import generate_password_hash
+           
             ahora = datetime.now()
 
             # --- 👇 EL PASO 0 (NUEVO BLOQUE DE LIMPIEZA) 👇 ---
-            emails_demo = ['titular@sportify.com', 'espera.casual@sportify.com', 'espera.abonado@sportify.com']
+            # Agregamos al titular.casual a la lista de limpieza
+            emails_demo = ['titular@sportify.com', 'titular.casual@sportify.com', 'espera.casual@sportify.com', 'espera.abonado@sportify.com']
             for email_demo in emails_demo:
                 usr_viejo = Usuario.query.filter_by(email=email_demo).first()
                 if usr_viejo:
@@ -461,11 +463,16 @@ def cargar_datos_base():
             db.session.commit()
             # --------------------------------------------------
 
-            # 1. Crear Usuario Cancelador (Abonado)
-            titular = Usuario(nombre="Titular", apellido="Abonado", dni="10000001", email="titular@sportify.com", password_hash=generate_password_hash("123"), fecha_nacimiento=date(1990, 1, 1))
-            db.session.add(titular)
+            # 1A. Crear Usuario Cancelador (ABONADO)
+            titular_abonado = Usuario(nombre="Titular", apellido="Abonado", dni="10000001", email="titular@sportify.com", password_hash=generate_password_hash("123"), fecha_nacimiento=date(1990, 1, 1))
+            db.session.add(titular_abonado)
             db.session.flush()
-            db.session.add(Credito(usuario_id=titular.id, mes=ahora.month, anio=ahora.year, pagado=True, descuento_activo=True))
+            db.session.add(Credito(usuario_id=titular_abonado.id, mes=ahora.month, anio=ahora.year, pagado=True, descuento_activo=True))
+
+            # 1B. Crear Usuario Cancelador (CASUAL) - ¡NUEVO!
+            titular_casual = Usuario(nombre="Titular", apellido="Casual", dni="10000004", email="titular.casual@sportify.com", password_hash=generate_password_hash("123"), fecha_nacimiento=date(1990, 1, 1))
+            db.session.add(titular_casual)
+            # A este NO le agregamos Credito para que el sistema lo tome como Casual
 
             # 2. Crear Usuario en Espera (Casual) - Solo lo creamos, NO lo anotamos
             espera_casual = Usuario(nombre="Espera", apellido="Casual", dni="10000002", email="espera.casual@sportify.com", password_hash=generate_password_hash("123"), fecha_nacimiento=date(1990, 1, 1))
@@ -477,34 +484,37 @@ def cargar_datos_base():
             db.session.flush()
             db.session.add(Credito(usuario_id=espera_abonado.id, mes=ahora.month, anio=ahora.year, pagado=True, descuento_activo=True))
 
-            # 4. Crear un Turno y una Clase con Cupo 1 (y llenarlo con el Titular)
-            turno_muestra = Turno(actividad_id=futbol_act.id, dia_semana='viernes', horario_inicio=time(20, 0), horario_fin=time(21, 0), cupo_maximo=1, activo=True)
-            db.session.add(turno_muestra)
-            db.session.flush()
-            
-            # Calculamos la fecha exacta del próximo viernes
+            # Calculamos la fecha del próximo viernes (compartida para ambas clases)
             hoy = date.today()
-            # 4 representa al viernes (0=Lunes, 1=Martes, etc.)
-            dias_para_viernes = (4 - hoy.weekday()) % 7 
-            
-            # Le sumamos 7 días extra para asegurar que siempre sea la semana que viene
+            dias_para_viernes = (4 - hoy.weekday()) % 7
             fecha_futuro = hoy + timedelta(days=dias_para_viernes + 7)
 
-            clase_muestra = Clase(turno_id=turno_muestra.id, fecha=fecha_futuro, cupo_disponible=0, activo=True)
-            db.session.add(clase_muestra)
+            # 4. Crear Clase 1: Para probar la cancelación del ABONADO (20:00 hs)
+            turno_abonado = Turno(actividad_id=futbol_act.id, dia_semana='viernes', horario_inicio=time(20, 0), horario_fin=time(21, 0), cupo_maximo=1, activo=True)
+            db.session.add(turno_abonado)
+            db.session.flush()
+            
+            clase_abonado = Clase(turno_id=turno_abonado.id, fecha=fecha_futuro, cupo_disponible=0, activo=True)
+            db.session.add(clase_abonado)
             db.session.flush()
 
-            # El titular tiene la reserva confirmada (La clase queda 0 lugares disponibles)
-            db.session.add(Reserva(clase_id=clase_muestra.id, usuario_id=titular.id, estado='confirmada', metodo_pago='efectivo', monto_total=20000.0, monto_pagado=20000.0))
+            # El Titular Abonado ocupa el lugar de las 20:00 hs
+            db.session.add(Reserva(clase_id=clase_abonado.id, usuario_id=titular_abonado.id, estado='confirmada', metodo_pago='efectivo', monto_total=20000.0, monto_pagado=20000.0))
 
-            # ¡COMENTAMOS LA LISTA DE ESPERA! La fila arranca vacía para la demo en vivo
-            # db.session.add(ListaEspera(clase_id=clase_muestra.id, usuario_id=espera_casual.id, posicion=1, estado='en_espera'))
-            # db.session.add(ListaEspera(clase_id=clase_muestra.id, usuario_id=espera_abonado.id, posicion=2, estado='en_espera'))
-            
+            # 5. Crear Clase 2: Para probar la cancelación del CASUAL (21:00 hs)
+            turno_casual = Turno(actividad_id=futbol_act.id, dia_semana='viernes', horario_inicio=time(21, 0), horario_fin=time(22, 0), cupo_maximo=1, activo=True)
+            db.session.add(turno_casual)
+            db.session.flush()
+
+            clase_casual = Clase(turno_id=turno_casual.id, fecha=fecha_futuro, cupo_disponible=0, activo=True)
+            db.session.add(clase_casual)
+            db.session.flush()
+
+            # El Titular Casual ocupa el lugar de las 21:00 hs (le ponemos una seña pagada de 10.000 para que se vea la diferencia)
+            db.session.add(Reserva(clase_id=clase_casual.id, usuario_id=titular_casual.id, estado='confirmada', metodo_pago='efectivo', monto_total=20000.0, monto_pagado=10000.0))
+
             db.session.commit()
-            print("✔️ Escenario de muestra listo: Titular Abonado tiene el cupo (Clase llena). La lista de espera está vacía para probarla en vivo.")
-            # ==========================================================
-            # ==========================================================
+            print("✔️ Escenario de muestra listo: Hay dos clases llenas (20:00 hs con Titular Abonado y 21:00 hs con Titular Casual).")# ==========================================================
             # 🎟️ ESCENARIO DEMO: CONTROL DE ACCESO POR QR (HU asistencia)
             # 4 reservas, todas con clase de HOY:
             #   #47 Juan Perez    -> CASO OK (se escanea por QR). Tambien sirve

@@ -257,6 +257,56 @@ const MisReservas = ({ userSession, onVolver }) => {
         );
     };
 
+
+//NOTIFICACIONES
+const [notificaciones, setNotificaciones] = useState([]);
+
+useEffect(() => {
+    // Reemplazá 'userSession.id' por como manejes tu sesión
+    const fetchNotificaciones = async () => {
+        try {
+            const res = await axios.get('http://127.0.0.1:5000/api/lista-espera/notificaciones', {
+                headers: { 'X-User-Id': userSession.id } 
+            });
+            setNotificaciones(res.data);
+        } catch (error) {
+            console.error("Error al cargar notificaciones");
+        }
+    };
+    
+    if (userSession?.id) {
+        fetchNotificaciones();
+    }
+}, [userSession]);
+
+
+const [viajandoTiempo, setViajandoTiempo] = useState(false);
+
+const handleViajeEnElTiempo = async () => {
+    if (viajandoTiempo) return; // evita doble disparo (doble clic / doble submit)
+    setViajandoTiempo(true);
+    try {
+      // 1. Ejecutamos el viaje
+      await axios.post('http://127.0.0.1:5000/api/lista-espera/viajar-tiempo', 
+        {}, 
+        { headers: { 'X-User-Id': userSession.id } }
+      );
+      
+      // 2. Si salió bien, refrescamos las notificaciones
+      const res = await axios.get('http://127.0.0.1:5000/api/lista-espera/notificaciones', {
+          headers: { 'X-User-Id': userSession.id }
+      });
+      setNotificaciones(res.data);
+
+      alert("⏳ ¡Viajamos 1 hora al futuro y se reasignaron los turnos!");
+      cargarReservas();
+    } catch (error) {
+      console.error("El backend dice:", error.response?.data); 
+      alert("Error: " + (error.response?.data?.message || "No hay nadie pendiente de pago."));
+    } finally {
+      setViajandoTiempo(false);
+    }
+};
     return (
         <div className="min-h-screen bg-[#F5F5F5] p-6">
             <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md">
@@ -264,6 +314,25 @@ const MisReservas = ({ userSession, onVolver }) => {
                 <div className="flex justify-between items-center border-b pb-4 mb-6">
                     <h1 className="text-3xl font-bold text-[#212121]">Mis Reservas</h1>
                     <button onClick={onVolver} className="bg-[#008080] hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition">Volver</button>
+                    <button onClick={handleViajeEnElTiempo} disabled={viajandoTiempo}
+    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded shadow-lg flex items-center gap-2 disabled:opacity-50"
+>
+    ⏳ {viajandoTiempo ? 'Viajando...' : 'Viajar 1 Hora'}
+</button>
+<div className="p-4 bg-white rounded shadow">
+    <h3 className="font-bold text-lg mb-2">🔔 Mis Notificaciones</h3>
+    {notificaciones.length === 0 ? (
+        <p className="text-gray-500">No tenés notificaciones nuevas.</p>
+    ) : (
+        <ul className="space-y-2">
+            {notificaciones.map((notif) => (
+                <li key={notif.id} className={`p-3 rounded border-l-4 ${notif.tipo === 'alerta' ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}>
+                    {notif.mensaje}
+                </li>
+            ))}
+        </ul>
+    )}
+</div>
                 </div>
 
                 {mensajePago && reservaSeleccionadaPago === null && (

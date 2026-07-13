@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from models import db, Clase, ListaEspera, Usuario
+from models import db, Clase, ListaEspera, Usuario, Notificacion
 from datetime import datetime, timedelta
 from models import Reserva
 from helpers.espera_helper import procesar_lista_espera_al_cancelar
@@ -128,3 +128,53 @@ def estadisticas_espera(clase_id):
             "no_abonados": no_abonados
         }
     }), 200
+
+# NOTA: la reasignación de cupo (procesar_lista_espera_al_cancelar) vive
+# ÚNICAMENTE en helpers/espera_helper.py y se usa vía el import de la línea 5.
+# Antes había una segunda función con el mismo nombre definida acá abajo,
+# que pisaba a la del helper y usaba un campo inexistente (fecha_solicitud),
+# provocando el 500. Se eliminó para evitar que esto vuelva a pasar.
+# Esa función del helper además crea la Notificacion correspondiente
+# ("¡Se liberó un cupo!..."), así que no hace falta duplicarla acá.
+
+
+# 1. 🕒 RUTA MÁGICA: VIAJAR EN EL TIEMPO
+@lista_espera_bp.route('/viajar-tiempo', methods=['POST'])
+def viajar_tiempo():
+    # Buscamos a los que están notificados (esperando confirmar su lugar)
+    pendientes = ListaEspera.query.filter_by(estado='notificado').all()
+    
+    if not pendientes:
+        return jsonify({"message": "No hay nadie pendiente de pago para avanzar el tiempo."}), 400
+        
+    for p in pendientes:
+        # Los marcamos como expirados
+        p.estado = 'expirado'
+
+        # Anulamos la reserva pendiente que le había generado el helper al notificarlo
+        # (si no hacemos esto, la reserva le queda "viva" aunque perdió su turno)
+        reserva_pendiente = Reserva.query.filter_by(
+            clase_id=p.clase_id, usuario_id=p.usuario_id, estado='pendiente_pago'
+        ).first()
+        if reserva_pendiente:
+            reserva_pendiente.estado = 'cancelada_centro'
+
+        # Creamos la notificación de "perdiste tu turno"
+        db.session.add(Notificacion(
+            usuario_id=p.usuario_id, 
+            mensaje="Tu tiempo expiró. El lugar pasó al siguiente en la fila."
+        ))
+        
+        # Y acá llamás de nuevo a la función de procesar lista para que le dé el lugar al siguiente
+        procesar_lista_espera_al_cancelar(p.clase_id, p.usuario_id)
+        
+    db.session.commit()
+    return jsonify({"message": "Viaje en el tiempo exitoso"}), 200
+
+
+# 2. 🔔 RUTA DE NOTIFICACIONES (Sin crear tablas nuevas)
+@lista_espera_bp.route('/notificaciones', methods=['GET'])
+def get_notificaciones():
+    user_id = request.headers.get('X-User-Id')
+    notas = Notificacion.query.filter_by(usuario_id=user_id, leida=False).all()
+    return jsonify([{"id": n.id, "mensaje": n.mensaje} for n in notas]), 200

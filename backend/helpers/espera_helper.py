@@ -1,5 +1,5 @@
 from datetime import datetime # Asegurate de importar datetime arriba de todo
-from models import db, Usuario, Clase, ListaEspera, Reserva, Actividad, Turno
+from models import db, Usuario, Clase, ListaEspera, Reserva, Actividad, Turno, Notificacion
 
 def procesar_lista_espera_al_cancelar(clase_id, usuario_que_cancela_id):
     """
@@ -65,6 +65,12 @@ def procesar_lista_espera_al_cancelar(clase_id, usuario_que_cancela_id):
           # 3. Lo sacamos de la lista de espera y registramos la hora exacta (Cronómetro ON)
         inscripcion_asignada.estado = 'notificado'
         inscripcion_asignada.fecha_notificacion = datetime.now() # <-- ¡NUEVA LÍNEA!
+
+        # 4. Le avisamos al usuario que tiene 1 hora para confirmar
+        db.session.add(Notificacion(
+            usuario_id=usuario_asignado.id,
+            mensaje="¡Se liberó un cupo! Tenés 1 hora para confirmar tu lugar."
+        ))
 
         # NOTA: NO incrementamos el cupo_disponible...
         db.session.commit()
