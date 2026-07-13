@@ -2,7 +2,7 @@ import re  # Para validar el carácter especial exigido por el SRS
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
-from models import db, Usuario, Administrador, Empleado
+from models import db, Usuario, Administrador, Empleado, Credito
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 
 # Creamos el Blueprint para Autenticación
@@ -188,6 +188,13 @@ def obtener_perfil(usuario_id):
     if not usuario:
         return jsonify({"status": "error", "message": "Usuario no encontrado"}), 404
 
+    ahora = datetime.now()
+    credito = Credito.query.filter_by(
+        usuario_id=usuario.id,
+        mes=ahora.month,
+        anio=ahora.year
+    ).first()
+
     return jsonify({
         "status": "success",
         "user": {
@@ -196,7 +203,12 @@ def obtener_perfil(usuario_id):
             "apellido": usuario.apellido,
             "email": usuario.email,
             "dni": usuario.dni,
-            "fecha_nacimiento": str(usuario.fecha_nacimiento)
+            "fecha_nacimiento": str(usuario.fecha_nacimiento),
+            "credito": {
+                "cancelaciones": credito.cancelaciones,
+                "clases_a_favor": credito.clases_a_favor,
+                "descuento_activo": credito.descuento_activo
+            } if credito else None
         }
     }), 200
 

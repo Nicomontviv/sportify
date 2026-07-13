@@ -41,6 +41,17 @@ class Usuario(db.Model):
         ).first()
         return credito_actual is not None
 
+    @property
+    def es_abonado_mes_actual(self):
+        """Verifica si el usuario es abonado este mes, independientemente del descuento activo"""
+        ahora = datetime.now()
+        credito_actual = Credito.query.filter_by(
+            usuario_id=self.id,
+            mes=ahora.month,
+            anio=ahora.year,
+            pagado=True
+        ).first()
+        return credito_actual is not None
 
 class Credito(db.Model):
     __tablename__ = 'credito'
@@ -54,6 +65,7 @@ class Credito(db.Model):
     fecha_pago = db.Column(db.DateTime, nullable=True)
     cancelaciones = db.Column(db.Integer, nullable=False, default=0)
     descuento_activo = db.Column(db.Boolean, nullable=False, default=True)
+    clases_a_favor = db.Column(db.Integer, nullable=False, default=0)
 
 
 # NUEVO: Modelo Administrador (Especialización de Usuario)
