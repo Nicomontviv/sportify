@@ -151,9 +151,8 @@ def cancelar_reserva(id):
             reserva.monto_pagado = 0
             senia_devuelta = True
     else:
-        # REGLA DE NEGOCIO: abonado cancela — se evalúa anticipación para determinar consecuencia
         limite_cancelacion_48h = inicio_clase - timedelta(hours=48)
-        
+
         credito_usuario = Credito.query.filter(
             Credito.usuario_id == user_id,
             Credito.anio == ahora.year,
@@ -162,11 +161,17 @@ def cancelar_reserva(id):
         if not credito_usuario:
             return jsonify({"status": "error", "message": "Crédito del abonado no encontrado"}), 404
 
+        # Si la reserva fue pagada como casual (seña pendiente), devolver la seña
+        if reserva.metodo_pago != 'membresia' and reserva.monto_pagado < reserva.monto_total:
+            limite_24h = inicio_clase - timedelta(hours=24)
+            if ahora < limite_24h:
+                reserva.monto_pagado = 0
+                senia_devuelta = True
+
         # Acumula cancelación siempre
         credito_usuario.cancelaciones += 1
 
-        if ahora < limite_cancelacion_48h:
-            # Más de 48hs → genera clase a favor
+        if ahora < limite_cancelacion_48h and reserva.metodo_pago == 'membresia':
             credito_usuario.clases_a_favor += 1
 
         if credito_usuario.cancelaciones >= 3:
@@ -179,8 +184,9 @@ def cancelar_reserva(id):
         return jsonify({
             "status": "success",
             "message": "La reserva se canceló con éxito",
-            "senia_devuelta": senia_devuelta
-            }), 200
+            "senia_devuelta": senia_devuelta,
+            "perdio_descuento": credito_usuario.cancelaciones >= 3 if usuario.es_abonado_mes_actual else False
+        }), 200
     
     except Exception as e:
         db.session.rollback()

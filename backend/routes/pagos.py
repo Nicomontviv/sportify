@@ -508,20 +508,23 @@ def reservar_y_pagar():
                 credito = Credito.query.filter_by(
                     usuario_id=user_id, anio=ahora.year, mes=ahora.month
                 ).first()
-                print(f"DEBUG is_abonado: True, credito encontrado: {credito}")
-                if credito:
-                    print(f"DEBUG clases_a_favor: {credito.clases_a_favor}")
+                if credito and credito.descuento_activo:
                     monto_total = round(monto_total - monto_total * float(credito.monto_descuento) / 100, 2)
-                    
-                    # REGLA DE NEGOCIO: si tiene clase a favor, la próxima reserva es gratis
-                    if credito.clases_a_favor > 0:
-                        monto_total = 0
-                        credito.clases_a_favor -= 1
+                
+                if credito and credito.clases_a_favor > 0:
+                    monto_total = 0
+                    credito.clases_a_favor -= 1
 
-                monto_a_cobrar = monto_total
-                monto_pagado_inicial = monto_total
-                tipo_deposito = 'pago_total'
-                estado = 'confirmada'
+                if tipo_pago == 'senia':
+                    monto_a_cobrar = round(monto_total * 0.5, 2)
+                    monto_pagado_inicial = monto_a_cobrar
+                    tipo_deposito = 'senia'
+                    estado = 'pendiente_pago'
+                else:
+                    monto_a_cobrar = monto_total
+                    monto_pagado_inicial = monto_total
+                    tipo_deposito = 'pago_total'
+                    estado = 'confirmada'
             elif tipo_pago == 'senia':
                 monto_a_cobrar = round(monto_total * 0.5, 2)
                 monto_pagado_inicial = monto_a_cobrar
@@ -536,7 +539,7 @@ def reservar_y_pagar():
             nueva_reserva = Reserva(
                 clase_id=clase_id,
                 usuario_id=user_id,
-                metodo_pago='tarjeta_virtual',
+                metodo_pago='membresia' if len(clases) >= 3 else 'tarjeta_virtual',
                 monto_total=monto_total,
                 monto_pagado=monto_pagado_inicial,
                 estado=estado
@@ -610,6 +613,7 @@ def reservar_y_pagar():
                         r.monto_total = monto_con_descuento
                         r.monto_pagado = monto_con_descuento
                         r.estado = 'confirmada'
+                        r.metodo_pago = 'membresia'
                     
                     db.session.commit()
 

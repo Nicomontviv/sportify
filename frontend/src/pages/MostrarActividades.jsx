@@ -115,17 +115,18 @@ const MostrarActividades = ({ userSession, onVolver }) => {
   const tieneClaseAFavor = creditoUsuario?.clases_a_favor > 0;
 
   const calcularTotal = () => {
-      const precio = actividadSeleccionada.precio_base || 0;
-      const precioConDescuento = esAbonado ? precio * 0.80 : precio;
-      let clasesAFavorRestantes = creditoUsuario?.clases_a_favor || 0;
+    const precio = actividadSeleccionada.precio_base || 0;
+    const descuento = esAbonado ? 0.80 : (creditoUsuario?.descuento_activo ? 0.80 : 1);
+    let clasesAFavorRestantes = creditoUsuario?.clases_a_favor || 0;
 
-      return Object.values(pagosSeleccionados).reduce((total) => {
-          if (tieneClaseAFavor && clasesAFavorRestantes > 0) {
-              clasesAFavorRestantes--;
-              return total;
-          }
-          return total + precioConDescuento;
-      }, 0);
+    return Object.values(pagosSeleccionados).reduce((total, tipo) => {
+        if (tieneClaseAFavor && clasesAFavorRestantes > 0) {
+            clasesAFavorRestantes--;
+            return total;
+        }
+        const precioBase = tipo === 'senia' ? precio * 0.5 : precio;
+        return total + precioBase * descuento;
+    }, 0);
   };
 
   const clasesFiltradas = clasesDeActividadSeleccionada.filter(c => !reservasActivasIds.has(c.id));

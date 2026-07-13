@@ -3,6 +3,10 @@ from datetime import date, datetime, time, timedelta
 from app import app, db
 from models import Usuario, Administrador, Actividad, Turno, Reserva, Clase, Empleado, Deposito, Certificado, db,Credito, ListaEspera
 from helpers.turnos_helper import generar_clases_para_mes
+from werkzeug.security import generate_password_hash
+from models import Credito, Certificado
+
+
 # Seeds para la demo - Junio 2026
 def cargar_datos_base():
     print("🧼 [1/4] Limpiando residuos de turnos anteriores...")
@@ -161,8 +165,6 @@ def cargar_datos_base():
     # Carlos Gomez — usuario abonado para HU cancelaciones/devoluciones
     print("🙋 [2.92/4] Creando usuario Abonado Carlos Gomez (HU cancelaciones)...")
     with app.app_context():
-        from werkzeug.security import generate_password_hash
-        from models import Credito, Certificado
 
         abonado_email = "abonado@sportify.com"
 
@@ -170,6 +172,9 @@ def cargar_datos_base():
         if not abonado_viejo:
             abonado_viejo = Usuario.query.filter_by(dni="33333333").first()
         if abonado_viejo:
+            for r in Reserva.query.filter_by(usuario_id=abonado_viejo.id).all():
+                Deposito.query.filter_by(reserva_id=r.id).delete()
+            db.session.commit()
             Reserva.query.filter_by(usuario_id=abonado_viejo.id).delete()
             Credito.query.filter_by(usuario_id=abonado_viejo.id).delete()
             Certificado.query.filter_by(usuario_id=abonado_viejo.id).delete()
@@ -187,18 +192,6 @@ def cargar_datos_base():
         )
         db.session.add(abonado_usuario)
         db.session.flush()
-
-        ahora = datetime.now()
-        credito = Credito(
-            usuario_id=abonado_usuario.id,
-            monto_descuento=20.00,
-            mes=ahora.month,
-            anio=ahora.year,
-            pagado=True,
-            descuento_activo=True,
-            cancelaciones=0
-        )
-        db.session.add(credito)
 
         certificado = Certificado(
             usuario_id=abonado_usuario.id,
@@ -278,7 +271,6 @@ def cargar_datos_base():
 
             casual_user  = Usuario.query.filter_by(email="casual@sportify.com").first()   # Juan Perez
             luis_user    = Usuario.query.filter_by(email="luis@sportify.com").first()     # Luis Gonzalez
-            abonado_user = Usuario.query.filter_by(email="abonado@sportify.com").first()
 
 
             turno_futbol_viernes = Turno(
@@ -526,78 +518,7 @@ def cargar_datos_base():
             db.session.add(clase_abonado_mas48)
             db.session.flush()
 
-            if abonado_user:
-                db.session.add(Reserva(
-                    clase_id=clase_abonado_mas48.id,
-                    usuario_id=abonado_user.id,
-                    estado='confirmada',
-                    metodo_pago='membresia',
-                    monto_total=16000.00,
-                    monto_pagado=16000.00
-                ))
-
-            # Caso 2: Clase entre 1hs y 48hs → cancela pero pierde turno
-            turno_abonado_entre = Turno(
-                actividad_id=voley_act.id,
-                dia_semana=DIAS_ES[inicio_entre.weekday()],
-                horario_inicio=inicio_entre.replace(second=0, microsecond=0).time(),
-                horario_fin=(inicio_entre + timedelta(hours=1)).replace(second=0, microsecond=0).time(),
-                cupo_maximo=12,
-                activo=True
-            )
-            db.session.add(turno_abonado_entre)
-            db.session.flush()
-
-            clase_abonado_entre = Clase(
-                turno_id=turno_abonado_entre.id,
-                fecha=inicio_entre.date(),
-                cupo_disponible=11,
-                activo=True
-            )
-            db.session.add(clase_abonado_entre)
-            db.session.flush()
-
-            if abonado_user:
-                db.session.add(Reserva(
-                    clase_id=clase_abonado_entre.id,
-                    usuario_id=abonado_user.id,
-                    estado='confirmada',
-                    metodo_pago='membresia',
-                    monto_total=14400.00,
-                    monto_pagado=14400.00
-                ))
-
-            # Caso 3: Clase en menos de 1hs → no puede cancelar
-            turno_abonado_menos1 = Turno(
-                actividad_id=basquet_act.id,
-                dia_semana=DIAS_ES[inicio_menos1.weekday()],
-                horario_inicio=inicio_menos1.replace(second=0, microsecond=0).time(),
-                horario_fin=(inicio_menos1 + timedelta(hours=1)).replace(second=0, microsecond=0).time(),
-                cupo_maximo=12,
-                activo=True
-            )
-            db.session.add(turno_abonado_menos1)
-            db.session.flush()
-
-            clase_abonado_menos1 = Clase(
-                turno_id=turno_abonado_menos1.id,
-                fecha=inicio_menos1.date(),
-                cupo_disponible=11,
-                activo=True
-            )
-            db.session.add(clase_abonado_menos1)
-            db.session.flush()
-
-            if abonado_user:
-                db.session.add(Reserva(
-                    clase_id=clase_abonado_menos1.id,
-                    usuario_id=abonado_user.id,
-                    estado='confirmada',
-                    metodo_pago='membresia',
-                    monto_total=16000.00,
-                    monto_pagado=16000.00
-                ))
-
+            
             db.session.commit()
             print("✔️ Escenarios abonado listos:")
             print("   Caso 1: clase en +48hs → cancela con crédito a favor")
