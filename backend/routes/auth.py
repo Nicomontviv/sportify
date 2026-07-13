@@ -1,10 +1,9 @@
 import re  # Para validar el carácter especial exigido por el SRS
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timezone
 from models import db, Usuario, Administrador, Empleado, Credito
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
-
 # Creamos el Blueprint para Autenticación
 auth_bp = Blueprint('auth', __name__)
 
@@ -346,7 +345,9 @@ def baja_usuario():
         return jsonify({"status": "error", "message": "El usuario ya está dado de baja"}), 400
 
     try:
-        usuario.activo = False  # Baja LÓGICA: no se borra de la base
+    
+        usuario.activo = False
+        usuario.fecha_baja = datetime.now(timezone.utc)  # ⬅️ esta línea tiene que estar
         db.session.commit()
         return jsonify({
             "status": "success",

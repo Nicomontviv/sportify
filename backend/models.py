@@ -17,6 +17,7 @@ class Usuario(db.Model):
     ultimo_recordatorio_enviado = db.Column(db.DateTime, nullable=True)
     activo = db.Column(db.Boolean, nullable=False, default=True)
     fecha_alta = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    fecha_baja = db.Column(db.DateTime, nullable=True)
     token_recuperacion = db.Column(db.String(255), nullable=True)
     token_recuperacion_usado = db.Column(db.Boolean, nullable=False, default=False)
     email_confirmado = db.Column(db.Boolean, nullable=False, default=False)

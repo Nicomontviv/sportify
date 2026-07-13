@@ -54,8 +54,8 @@ const ReporteUsuariosCancelaciones = ({
   const anios = [hoy.getFullYear() - 1, hoy.getFullYear(), hoy.getFullYear() + 1];
 
   // Escenario 2: sin reservas registradas en el período seleccionado
-  const sinDatos = datos && datos.total_reservas === 0;
-
+ // const sinDatos = !datos || datos.total_reservas === 0;
+  const sinDatos = !datos || Object.keys(datos).length === 0;
   return (
     <div className="flex min-h-screen bg-sportify-light">
 
@@ -158,13 +158,11 @@ const ReporteUsuariosCancelaciones = ({
 
         {cargando ? (
           <p className="p-8 text-center text-sm text-sportify-dark opacity-60">Cargando reporte...</p>
-        ) : !datos ? null : sinDatos ? (
-          // Escenario 2: sin reservas en el período, sin error
-          <div className="rounded-2xl border border-gray-200 bg-sportify-white p-8 text-center shadow-sm">
-            <p className="text-sm text-sportify-dark opacity-60">
-              No hay datos disponibles para {MESES[mes - 1]} de {anio}.
-            </p>
-          </div>
+        ) :  sinDatos  ? (
+          // Escenario 2: sin datos para el período, sin error
+          <p className="p-8 text-center text-sm text-sportify-dark opacity-60">
+            No hay datos disponibles para {MESES[mes - 1]} de {anio}.
+          </p>
         ) : (
           <>
             {/* TARJETAS DE INDICADORES (Regla 2) */}
@@ -210,7 +208,7 @@ const ReporteUsuariosCancelaciones = ({
             </div>
           </>
         )}
-      </main>
+        </main>
     </div>
   );
 };

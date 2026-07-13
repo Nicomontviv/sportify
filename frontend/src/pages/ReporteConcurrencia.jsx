@@ -162,25 +162,27 @@ const ReporteConcurrencia = ({ userSession, setIsLoggedIn, irAGestionActividades
           ) : (
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-sportify-light border-b border-gray-200 text-xs font-bold uppercase text-sportify-dark opacity-70">
-                  <th className="p-4">Actividad</th>
-                  <th className="p-4">Total Asistentes</th>
-                  <th className="p-4">% Ocupación Promedio</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 text-sm text-sportify-dark">
-                {datos.map((fila, index) => (
-                  <tr key={index} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="p-4 font-semibold">{fila.nombre_actividad}</td>
-                    <td className="p-4">{fila.total_asistentes}</td>
-                    <td className="p-4">
-                      <span className="inline-block rounded-full px-2.5 py-0.5 text-xs font-bold bg-green-100 text-green-700">
-                        {fila.porcentaje_ocupacion_promedio}%
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
+  <tr className="bg-sportify-light border-b border-gray-200 text-xs font-bold uppercase text-sportify-dark opacity-70">
+    <th className="p-4">Actividad</th>
+    <th className="p-4">Total Asistentes</th>
+    <th className="p-4">Cupo Total</th>
+    <th className="p-4">% Ocupación Promedio</th>
+  </tr>
+</thead>
+<tbody className="divide-y divide-gray-100 text-sm text-sportify-dark">
+  {datos.map((fila, index) => (
+    <tr key={index} className="hover:bg-gray-50/50 transition-colors">
+      <td className="p-4 font-semibold">{fila.nombre_actividad}</td>
+      <td className="p-4">{fila.total_asistentes}</td>
+      <td className="p-4">{fila.cupo_total}</td>
+      <td className="p-4">
+        <span className="inline-block rounded-full px-2.5 py-0.5 text-xs font-bold bg-green-100 text-green-700">
+          {fila.porcentaje_ocupacion_promedio}%
+        </span>
+      </td>
+    </tr>
+  ))}
+</tbody>
             </table>
           )}
         </div>
