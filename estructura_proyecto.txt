@@ -1,6 +1,10 @@
 ====================================================================
 📁 ESTRUCTURA DEL PROYECTO (Generada con find)
+<<<<<<< HEAD
 Fecha: do., 12 de jul. de 2026 20:13:44
+=======
+Fecha: Sun, Jul 12, 2026 12:49:15 PM
+>>>>>>> development
 ====================================================================
 .
 ./backend
@@ -33,7 +37,6 @@ Fecha: do., 12 de jul. de 2026 20:13:44
 ./database
 ./database/sportify.sql
 ./docker-compose.yml
-./docs
 ./estructura_proyecto.txt
 ./frontend
 ./frontend/eslint.config.js

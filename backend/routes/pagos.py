@@ -503,17 +503,28 @@ def reservar_y_pagar():
             actividad = db.session.get(Actividad, turno.actividad_id)
             monto_total = float(actividad.precio_base)
 
-            if usuario.is_abonado_actual:
+            if usuario.es_abonado_mes_actual:
                 ahora = datetime.now()
                 credito = Credito.query.filter_by(
                     usuario_id=user_id, anio=ahora.year, mes=ahora.month
                 ).first()
-                if credito:
+                if credito and credito.descuento_activo:
                     monto_total = round(monto_total - monto_total * float(credito.monto_descuento) / 100, 2)
-                monto_a_cobrar = monto_total
-                monto_pagado_inicial = monto_total
-                tipo_deposito = 'pago_total'
-                estado = 'confirmada'
+                
+                if credito and credito.clases_a_favor > 0:
+                    monto_total = 0
+                    credito.clases_a_favor -= 1
+
+                if tipo_pago == 'senia':
+                    monto_a_cobrar = round(monto_total * 0.5, 2)
+                    monto_pagado_inicial = monto_a_cobrar
+                    tipo_deposito = 'senia'
+                    estado = 'pendiente_pago'
+                else:
+                    monto_a_cobrar = monto_total
+                    monto_pagado_inicial = monto_total
+                    tipo_deposito = 'pago_total'
+                    estado = 'confirmada'
             elif tipo_pago == 'senia':
                 monto_a_cobrar = round(monto_total * 0.5, 2)
                 monto_pagado_inicial = monto_a_cobrar
@@ -528,7 +539,7 @@ def reservar_y_pagar():
             nueva_reserva = Reserva(
                 clase_id=clase_id,
                 usuario_id=user_id,
-                metodo_pago='tarjeta_virtual',
+                metodo_pago='membresia' if len(clases) >= 3 else 'tarjeta_virtual',
                 monto_total=monto_total,
                 monto_pagado=monto_pagado_inicial,
                 estado=estado
@@ -558,6 +569,53 @@ def reservar_y_pagar():
             })
 
         db.session.commit()
+
+        # REGLA DE NEGOCIO: verificar si el usuario se convierte en abonado
+        ahora = datetime.now()
+        for item in clases:
+            clase_id = item.get('clase_id')
+            clase = db.session.get(Clase, clase_id)
+            turno = db.session.get(Turno, clase.turno_id)
+            
+            reservas_mismo_turno = Reserva.query.join(Clase).filter(
+                Reserva.usuario_id == user_id,
+                Clase.turno_id == turno.id,
+                db.extract('month', Clase.fecha) == ahora.month,
+                db.extract('year', Clase.fecha) == ahora.year,
+                Reserva.estado.in_(['confirmada', 'pendiente_pago'])
+            ).count()
+
+            if reservas_mismo_turno >= 3:
+                credito_existente = Credito.query.filter_by(
+                    usuario_id=user_id, mes=ahora.month, anio=ahora.year
+                ).first()
+                if not credito_existente:
+                    nuevo_credito = Credito(
+                        usuario_id=user_id,
+                        mes=ahora.month,
+                        anio=ahora.year,
+                        pagado=True,
+                        descuento_activo=True
+                    )
+                    db.session.add(nuevo_credito)
+                    
+                    # Aplicar descuento retroactivo a las reservas del mismo turno
+                    reservas_a_actualizar = Reserva.query.join(Clase).filter(
+                        Reserva.usuario_id == user_id,
+                        Clase.turno_id == turno.id,
+                        db.extract('month', Clase.fecha) == ahora.month,
+                        db.extract('year', Clase.fecha) == ahora.year,
+                        Reserva.estado.in_(['confirmada', 'pendiente_pago'])
+                    ).all()
+                    
+                    for r in reservas_a_actualizar:
+                        monto_con_descuento = round(float(r.monto_total) * 0.80, 2)
+                        r.monto_total = monto_con_descuento
+                        r.monto_pagado = monto_con_descuento
+                        r.estado = 'confirmada'
+                        r.metodo_pago = 'membresia'
+                    
+                    db.session.commit()
 
         if len(clases) == 1 and clases[0]['tipo_pago'] == 'senia':
             mensaje = "Reserva confirmada. Seña pagada exitosamente."

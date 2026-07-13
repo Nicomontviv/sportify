@@ -20,13 +20,14 @@ const MiPerfil = ({ userSession, setIsLoggedIn, onVolver }) => {
       const data = await response.json();
       if (data.status === 'success') {
         setFormData({
-          nombre: data.user.nombre,
-          apellido: data.user.apellido,
-          email: data.user.email,
-          fecha_nacimiento: data.user.fecha_nacimiento,
-          dni: data.user.dni,
-          password: '',
-          confirmar_password: ''
+            nombre: data.user.nombre,
+            apellido: data.user.apellido,
+            email: data.user.email,
+            fecha_nacimiento: data.user.fecha_nacimiento,
+            dni: data.user.dni,
+            credito: data.user.credito,  // agregá esta línea
+            password: '',
+            confirmar_password: ''
         });
       }
     } catch {
@@ -131,10 +132,25 @@ const MiPerfil = ({ userSession, setIsLoggedIn, onVolver }) => {
                 <span className="text-gray-400">Nacimiento</span>
                 <span className="font-semibold text-[#212121]">{formData.fecha_nacimiento || '—'}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Tipo</span>
-                <span className="font-semibold text-[#32CD32]">Casual</span>
-              </div>
+              {formData.credito && (
+                <>
+                    <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Cancelaciones del mes</span>
+                        <span className={`font-semibold ${formData.credito.cancelaciones >= 3 ? 'text-red-500' : 'text-[#212121]'}`}>
+                            {formData.credito.cancelaciones}/3
+                        </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Clases a favor</span>
+                        <span className="font-semibold" style={{color: '#32CD32'}}>{formData.credito.clases_a_favor}</span>
+                    </div>
+                    {!formData.credito.descuento_activo && (
+                        <div className="text-xs text-red-500 font-semibold mt-1">
+                            ⚠️ Sin descuento el próximo mes
+                        </div>
+                    )}
+                </>
+              )}
                 <div className="w-full border-t pt-4 space-y-2">
                     <div className='flex justify-center'>
                          <button onClick={handleBajaCuenta} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition">

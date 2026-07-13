@@ -10,11 +10,8 @@
 --    concreta y cupo disponible propio. RESERVA, LISTA_ESPERA
 --    y LISTA_ACTIVIDAD_PROFESOR pasan a referenciar CLASE.
 -- ============================================================
-
-CREATE DATABASE IF NOT EXISTS sportify
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
+DROP DATABASE IF EXISTS sportify;
+CREATE DATABASE sportify CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE sportify;
 
 -- ------------------------------------------------------------
@@ -76,6 +73,7 @@ CREATE TABLE credito (
   fecha_pago       DATETIME,
   cancelaciones    TINYINT       NOT NULL DEFAULT 0,        -- acumuladas en el mes
   descuento_activo TINYINT(1)    NOT NULL DEFAULT 1,
+  clases_a_favor TINYINT NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
   UNIQUE KEY uq_credito_usuario_mes_anio (usuario_id, mes, anio),
   CONSTRAINT fk_credito_usuario FOREIGN KEY (usuario_id)

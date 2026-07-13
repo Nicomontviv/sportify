@@ -10,6 +10,7 @@ const MostrarActividades = ({ userSession, onVolver }) => {
   const [tipoMensaje, setTipoMensaje] = useState('');
     const [clasesEnEspera, setClasesEnEspera] = useState([]);
   // Estado de pago
+  const [creditoUsuario, setCreditoUsuario] = useState(null);
   const [pagosSeleccionados, setPagosSeleccionados] = useState({});
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [procesando, setProcesando] = useState(false);
@@ -22,6 +23,7 @@ const MostrarActividades = ({ userSession, onVolver }) => {
     cvv: ''
   });
   const [erroresTarjeta, setErroresTarjeta] = useState({});
+  const [clasesEnEspera, setClasesEnEspera] = useState([]);
 
   useEffect(() => {
     const cargarActividadesDisponibles = async () => {
@@ -58,32 +60,80 @@ const MostrarActividades = ({ userSession, onVolver }) => {
       const finMes = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).toISOString().split('T')[0];
       const response = await axios.get(`http://127.0.0.1:5000/api/turnos/clases?desde=${hoy}&hasta=${finMes}&actividad_id=${actividad.id}`);
       if (response.data.status === 'success') setClases(response.data.clases);
+
+      // Traigo el credito del usuario
+      const resCred = await axios.get(`http://127.0.0.1:5000/api/usuarios/${userSession.id}`);
+      if (resCred.data.status === 'success') {
+          setCreditoUsuario(resCred.data.user.credito);
+      }
     } catch (error) {
       console.error("Error al mostrar las clases", error.response?.data || error.message);
     }
   };
-
   const handleSeleccionPago = (claseId, tipoPago) => {
     setMensajePago('');
     setPagosSeleccionados((prev) => {
+      let nuevo;
       if (prev[claseId] === tipoPago) {
-        const nuevo = { ...prev };
+        nuevo = { ...prev };
         delete nuevo[claseId];
-        return nuevo;
+      } else {
+        nuevo = { ...prev, [claseId]: tipoPago };
       }
-      return { ...prev, [claseId]: tipoPago };
+
+      const conteoPorTurno = {};
+      Object.keys(nuevo).forEach((id) => {
+        const clase = clasesDeActividadSeleccionada.find(c => c.id === parseInt(id));
+        if (clase) {
+          conteoPorTurno[clase.turno_id] = (conteoPorTurno[clase.turno_id] || 0) + 1;
+        }
+      });
+      const abonadoTrasSeleccion = Object.values(conteoPorTurno).some(count => count >= 3);
+
+      if (abonadoTrasSeleccion) {
+        Object.keys(nuevo).forEach((id) => {
+          if (nuevo[id] === 'senia') nuevo[id] = 'total';
+        });
+      }
+
+      return nuevo;
     });
   };
 
+  const contarClasesPorTurno = () => {
+    const conteo = {};
+    Object.keys(pagosSeleccionados).forEach(claseId => {
+      const clase = clasesDeActividadSeleccionada.find(c => c.id === parseInt(claseId));
+      if (clase) {
+        conteo[clase.turno_id] = (conteo[clase.turno_id] || 0) + 1;
+      }
+    });
+    return conteo;
+  };
+
+  const esAbonado = Object.values(contarClasesPorTurno()).some(count => count >= 3);
+  const tieneClaseAFavor = creditoUsuario?.clases_a_favor > 0;
+
   const calcularTotal = () => {
     const precio = actividadSeleccionada.precio_base || 0;
+    const descuento = esAbonado ? 0.80 : (creditoUsuario?.descuento_activo ? 0.80 : 1);
+    let clasesAFavorRestantes = creditoUsuario?.clases_a_favor || 0;
+
     return Object.values(pagosSeleccionados).reduce((total, tipo) => {
-      return total + (tipo === 'senia' ? precio * 0.5 : precio);
+        if (tieneClaseAFavor && clasesAFavorRestantes > 0) {
+            clasesAFavorRestantes--;
+            return total;
+        }
+        const precioBase = tipo === 'senia' ? precio * 0.5 : precio;
+        return total + precioBase * descuento;
     }, 0);
   };
 
   const clasesFiltradas = clasesDeActividadSeleccionada.filter(c => !reservasActivasIds.has(c.id));
   const haySeleccion = Object.keys(pagosSeleccionados).length > 0;
+
+
+
 
   const handleTarjetaChange = (e) => {
     const { name, value } = e.target;
@@ -158,12 +208,14 @@ const MostrarActividades = ({ userSession, onVolver }) => {
         setPagosSeleccionados({});
         setTarjeta({ numero_tarjeta: '', titular: '', vencimiento: '', cvv: '' });
         setMostrarFormulario(false);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         mostrarClases(actividadSeleccionada);
         cargarMisReservas();
       }
     } catch (error) {
       setMensajePago(error.response?.data?.message || 'No se pudo realizar el pago, por favor intentá nuevamente.');
       setTipoMensajePago('error');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setProcesando(false);
     }
@@ -188,16 +240,15 @@ const MostrarActividades = ({ userSession, onVolver }) => {
     setClasesEnEspera(prev => [...prev, claseId]);
 
     try {
-      const response = await axios.post('http://127.0.0.1:5000/api/lista-espera', 
+      const response = await axios.post('http://127.0.0.1:5000/api/lista-espera',
         { clase_id: claseId },
         { headers: { 'X-User-Id': userSession.id } }
       );
-      
+
       // Mostrar éxito y limpiar posibles mensajes de error previos
       setMensajePago(response.data.message);
       setTipoMensajePago('success');
-      // ¡Acá NO lo sacamos del array! Queremos que el botón se quede gris.
-
+      
     } catch (error) {
       // 2. Si algo falló, lo sacamos del array para que el botón se vuelva a habilitar
       setClasesEnEspera(prev => prev.filter(id => id !== claseId));
@@ -233,6 +284,7 @@ const MostrarActividades = ({ userSession, onVolver }) => {
 
             <p className="text-gray-600 mb-6">
               Seleccioná una o varias clases y elegí si querés pagar la seña (50%) o el total.
+              <p className="text-black-600 font-semibold" > Si reservás 3 o más clases del mismo horario en el mes, te convertís en abonado y obtenés un 20% de descuento sobre el valor total de las clases seleccionadas.</p>
             </p>
 
             {mensajePago && (
@@ -263,44 +315,68 @@ const MostrarActividades = ({ userSession, onVolver }) => {
                       <p className="text-gray-500 text-sm">{clase.horario_inicio} - {clase.horario_fin}</p>
                       <p className="text-sm text-[#008080]">Cupos disponibles: {clase.cupo_disponible}</p>
                       <p className="text-sm text-gray-500 mt-1">
-                        Precio: <span className="font-medium">${actividadSeleccionada.precio_base?.toLocaleString('es-AR')}</span>
+                        Precio: {esAbonado ? (
+                          <>
+                            <span className="line-through" style={{color: '#212121'}}>${actividadSeleccionada.precio_base?.toLocaleString('es-AR')}</span>
+                            {' '}
+                            <span className="font-semibold" style={{color: '#32CD32'}}>${(actividadSeleccionada.precio_base * 0.80).toLocaleString('es-AR')}</span>
+                          </>
+                        ) : (
+                          <span className="font-medium">${actividadSeleccionada.precio_base?.toLocaleString('es-AR')}</span>
+                        )}
                       </p>
                     </div>
 
                     {clase.cupo_disponible > 0 ? (
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => handleSeleccionPago(clase.id, 'senia')}
-                          className={`py-2 px-4 rounded font-medium border transition ${
-                            pagosSeleccionados[clase.id] === 'senia'
-                              ? 'bg-yellow-400 border-yellow-500 text-white'
-                              : 'bg-white border-yellow-400 text-yellow-600 hover:bg-yellow-50'
-                          }`}
-                        >
-                          Pagar seña (50%)<br />
-                          <span className="text-sm">${(actividadSeleccionada.precio_base * 0.5).toLocaleString('es-AR')}</span>
-                        </button>
-                        <button
-                          onClick={() => handleSeleccionPago(clase.id, 'total')}
-                          className={`py-2 px-4 rounded font-medium border transition ${
-                            pagosSeleccionados[clase.id] === 'total'
-                              ? 'bg-[#1E90FF] border-blue-600 text-white'
-                              : 'bg-white border-[#1E90FF] text-[#1E90FF] hover:bg-blue-50'
-                          }`}
-                        >
-                          Pagar total (100%)<br />
-                          <span className="text-sm">${actividadSeleccionada.precio_base?.toLocaleString('es-AR')}</span>
-                        </button>
+                        {esAbonado ? (
+                          <button
+                            onClick={() => handleSeleccionPago(clase.id, 'total')}
+                            className={`py-2 px-4 rounded font-medium border transition ${
+                              pagosSeleccionados[clase.id]
+                                ? 'bg-[#1E90FF] border-blue-600 text-white'
+                                : 'bg-white border-[#1E90FF] text-[#1E90FF] hover:bg-blue-50'
+                            }`}
+                          >
+                            Reservar con descuento<br />
+                            <span className="text-sm">${(actividadSeleccionada.precio_base * 0.80).toLocaleString('es-AR')}</span>
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleSeleccionPago(clase.id, 'senia')}
+                              className={`py-2 px-4 rounded font-medium border transition ${
+                                pagosSeleccionados[clase.id] === 'senia'
+                                  ? 'bg-yellow-400 border-yellow-500 text-white'
+                                  : 'bg-white border-yellow-400 text-yellow-600 hover:bg-yellow-50'
+                              }`}
+                            >
+                              Pagar seña (50%)<br />
+                              <span className="text-sm">${(actividadSeleccionada.precio_base * 0.5).toLocaleString('es-AR')}</span>
+                            </button>
+                            <button
+                              onClick={() => handleSeleccionPago(clase.id, 'total')}
+                              className={`py-2 px-4 rounded font-medium border transition ${
+                                pagosSeleccionados[clase.id] === 'total'
+                                  ? 'bg-[#1E90FF] border-blue-600 text-white'
+                                  : 'bg-white border-[#1E90FF] text-[#1E90FF] hover:bg-blue-50'
+                              }`}
+                            >
+                              Pagar total (100%)<br />
+                              <span className="text-sm">${actividadSeleccionada.precio_base?.toLocaleString('es-AR')}</span>
+                            </button>
+                          </>
+                        )}
                       </div>
                     ) : (
                       /* --- REEMPLAZO DEL TEXTO "Sin Cupos" POR EL BOTÓN DE LISTA DE ESPERA --- */
                       <button
-                       onClick={() => handleUnirseListaEspera(clase.id)}
-                       disabled={clasesEnEspera.includes(clase.id)}
-                       className="font-bold py-2 px-4 rounded transition h-fit text-white bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 disabled:hover:bg-gray-400 disabled:cursor-not-allowed"
-                           >
-                       {clasesEnEspera.includes(clase.id) ? 'Anotado en espera' : 'Unirse a lista de espera'}
-                       </button>
+                        onClick={() => handleUnirseListaEspera(clase.id)}
+                        disabled={clasesEnEspera.includes(clase.id)}
+                        className="font-bold py-2 px-4 rounded transition h-fit text-white bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      >
+                        {clasesEnEspera.includes(clase.id) ? 'Anotado en espera' : 'Unirse a lista de espera'}
+                      </button>
                     )}
                   </div>
                 </div>
@@ -316,6 +392,7 @@ const MostrarActividades = ({ userSession, onVolver }) => {
                       ${calcularTotal().toLocaleString('es-AR')}
                     </span>
                   </p>
+
                   {!mostrarFormulario && (
                     <button
                       onClick={() => { setMostrarFormulario(true); setMensajePago(''); }}

@@ -266,7 +266,7 @@ def test_crear_reserva_usuario_no_abonado(client, usuario_casual, clase_con_cupo
     db.session.refresh(clase_con_cupo)
     assert clase_con_cupo.cupo_disponible == 4
 
-@pytest.mark.skip(reason="Requiere usuario abonado - no implementado aún")
+
 def test_crear_reserva_usuario_abonado(client, usuario_abonado, clase_con_cupo):
     """Escenario exitoso: reserva de abonado queda confirmada con descuento del 20% aplicado"""
     payload = {
@@ -336,7 +336,6 @@ def test_cancelar_reserva_no_encontrada(client, usuario_casual):
 
     assert response.status_code == 404
 
-@pytest.mark.skip(reason="Requiere usuario abonado - no implementado aún")
 def test_cancelar_reserva_no_es_suya(client, usuario_abonado, reserva_cancelable_mas_24h):
     """RN: un usuario no puede cancelar la reserva de otro → 403"""
     headers = {'X-User-Id': str(usuario_abonado.id)}
@@ -391,7 +390,7 @@ def test_cancelar_reserva_no_abonado_entre_1h_y_24h(client, usuario_casual, rese
     assert reserva_cancelable_entre_1h_y_24h.estado == 'cancelada_usuario'
     assert float(reserva_cancelable_entre_1h_y_24h.monto_pagado) == 2500.00
 
-@pytest.mark.skip(reason="Requiere usuario abonado - no implementado aún")
+
 def test_cancelar_reserva_abonado(client, usuario_abonado, reserva_abonado_cancelable):
     """RN: cancelación de abonado incrementa el contador de cancelaciones del mes"""
     ahora = datetime.now()

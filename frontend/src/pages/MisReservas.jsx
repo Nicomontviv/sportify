@@ -37,6 +37,9 @@ const MisReservas = ({ userSession, onVolver }) => {
                 if (response.data.senia_devuelta) {
                     window.alert('Se devolvió la seña');
                 }
+                if (response.data.perdio_descuento) {
+                    window.alert('⚠️ Alcanzaste 3 cancelaciones este mes. Perderás el beneficio del 20% de descuento el mes siguiente.');
+                }
             }
         } catch (error) {
             console.error("Error al cancelar:", error.response?.data || error.message);

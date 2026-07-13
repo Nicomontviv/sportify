@@ -1,6 +1,7 @@
 services:
   mysql:
-    image: mysql:8.0
+    image: mysql:8
+    platform: linux/amd64
     container_name: sportify_mysql
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
